@@ -9,12 +9,22 @@
 const DATA_URL = "data/meta.json";
 const IMAGE_SOURCE_ID = "climate-image";
 const IMAGE_LAYER_ID = "climate-layer";
+const HIGHLIGHT_SOURCE_ID = "climate-highlight";
+const HIGHLIGHT_LAYER_ID = "climate-highlight-layer";
+
+const HIGHLIGHT_DIM_ALPHA = 170; // 0-255, alpha of the dimming overlay
 
 let meta = null;
 let currentVariable = null;
 let currentWeekIndex = 0;
 let currentGrid = null; // Int16Array for the currently loaded variable/week
 const gridCache = new Map(); // "var:weekIndex" -> Int16Array
+
+let highlightEnabled = false;
+let highlightDirection = "atLeast"; // "atLeast" | "atMost"
+let highlightThreshold = 0;
+let rowRemap = null; // Int32Array: for each Mercator-warped output row, the
+// nearest source row index in the north-first equirectangular grid.
 
 const variableButtonsEl = document.getElementById("variable-buttons");
 const legendImgEl = document.getElementById("legend-gradient");
@@ -24,6 +34,11 @@ const selectedWeekLabelEl = document.getElementById("selected-week-label");
 const calendarEl = document.getElementById("calendar");
 const tooltipEl = document.getElementById("tooltip");
 const loadingEl = document.getElementById("loading");
+const highlightEnableEl = document.getElementById("highlight-enable");
+const highlightControlsEl = document.getElementById("highlight-controls");
+const highlightDirectionEl = document.getElementById("highlight-direction");
+const highlightThresholdEl = document.getElementById("highlight-threshold");
+const highlightValueLabelEl = document.getElementById("highlight-value-label");
 
 const map = new maplibregl.Map({
   container: "map",
@@ -71,6 +86,27 @@ map.on("load", async () => {
     firstSymbolLayer ? firstSymbolLayer.id : undefined
   );
 
+  // Highlight overlay: a dimming mask drawn on top of the color layer,
+  // built client-side from the raw grid, so it can respond instantly to
+  // threshold changes without any server round-trip.
+  map.addSource(HIGHLIGHT_SOURCE_ID, {
+    type: "image",
+    url: transparentPixelUrl(),
+    coordinates,
+  });
+
+  map.addLayer(
+    {
+      id: HIGHLIGHT_LAYER_ID,
+      type: "raster",
+      source: HIGHLIGHT_SOURCE_ID,
+      paint: {
+        "raster-opacity": 1,
+      },
+    },
+    firstSymbolLayer ? firstSymbolLayer.id : undefined
+  );
+
   map.fitBounds(
     [
       [lonMin, latMin],
@@ -91,6 +127,10 @@ map.on("load", async () => {
   buildVariableButtons();
   buildCalendar();
   updateLegend();
+  setupHighlightControls();
+
+  const { rows } = meta.grid;
+  rowRemap = buildMercatorRowRemap(latMin, latMax, meta.grid.latStep, rows);
 
   await setWeek(0);
 
@@ -181,7 +221,7 @@ function buildCalendar() {
   });
 }
 
-function highlightSelectedWeek() {
+function markSelectedWeekCell() {
   const cells = calendarEl.querySelectorAll(".week-cell");
   cells.forEach((cell) => {
     cell.classList.toggle(
@@ -200,6 +240,7 @@ async function setVariable(variable) {
   });
 
   updateLegend();
+  configureThresholdRangeForVariable(meta.variables[currentVariable]);
 
   const source = map.getSource(IMAGE_SOURCE_ID);
   if (source) {
@@ -207,13 +248,14 @@ async function setVariable(variable) {
   }
 
   currentGrid = await loadGrid(currentVariable, currentWeekIndex);
+  updateHighlightOverlay();
 }
 
 async function setWeek(index) {
   currentWeekIndex = index;
   const week = meta.weeks[index];
   selectedWeekLabelEl.textContent = formatWeekLabel(week);
-  highlightSelectedWeek();
+  markSelectedWeekCell();
 
   const source = map.getSource(IMAGE_SOURCE_ID);
   if (source) {
@@ -221,6 +263,7 @@ async function setWeek(index) {
   }
 
   currentGrid = await loadGrid(currentVariable, index);
+  updateHighlightOverlay();
 }
 
 async function loadGrid(variable, index) {
@@ -274,4 +317,150 @@ function onMouseMove(e) {
     const value = raw / config.rawEncoding.scale;
     tooltipEl.textContent = `${config.label}: ${value.toFixed(1)}${config.units}`;
   }
+}
+
+// --- Highlight (threshold) overlay -----------------------------------
+
+function transparentPixelUrl() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1;
+  canvas.height = 1;
+  return canvas.toDataURL("image/png");
+}
+
+function mercatorY(latDeg) {
+  const phi = (latDeg * Math.PI) / 180;
+  return Math.log(Math.tan(Math.PI / 4 + phi / 2));
+}
+
+function mercatorYToLat(y) {
+  const phi = 2 * Math.atan(Math.exp(y)) - Math.PI / 2;
+  return (phi * 180) / Math.PI;
+}
+
+/**
+ * For a north-first equirectangular grid (row 0 = latMax, evenly spaced by
+ * `latStep`), build a mapping from an output row index (also north-first,
+ * but evenly spaced in Web Mercator Y, matching how the color PNGs were
+ * pre-warped in export_web.py) to the nearest source row index.
+ *
+ * Nearest-neighbor (rather than interpolation) is used deliberately, so
+ * NaN "no data" cells never bleed into neighboring valid cells when we
+ * threshold them.
+ */
+function buildMercatorRowRemap(latMin, latMax, latStep, rows) {
+  const yMin = mercatorY(latMin);
+  const yMax = mercatorY(latMax);
+  const remap = new Int32Array(rows);
+
+  for (let r = 0; r < rows; r++) {
+    const frac = r / (rows - 1);
+    const yRow = yMax - frac * (yMax - yMin);
+    const latRow = mercatorYToLat(yRow);
+    const idxFrac = Math.min(
+      Math.max((latMax - latRow) / latStep, 0),
+      rows - 1
+    );
+    remap[r] = Math.round(idxFrac);
+  }
+
+  return remap;
+}
+
+function setupHighlightControls() {
+  const config = meta.variables[currentVariable];
+  highlightThreshold = (config.colorScale.min + config.colorScale.max) / 2;
+  configureThresholdRangeForVariable(config);
+
+  highlightEnableEl.addEventListener("change", () => {
+    highlightEnabled = highlightEnableEl.checked;
+    highlightControlsEl.classList.toggle("disabled", !highlightEnabled);
+    updateHighlightOverlay();
+  });
+
+  highlightDirectionEl.querySelectorAll(".direction-button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      highlightDirection = btn.dataset.direction;
+      highlightDirectionEl
+        .querySelectorAll(".direction-button")
+        .forEach((b) => b.classList.toggle("active", b === btn));
+      updateHighlightOverlay();
+    });
+  });
+
+  highlightThresholdEl.addEventListener("input", () => {
+    highlightThreshold = parseFloat(highlightThresholdEl.value);
+    updateHighlightLabel();
+    updateHighlightOverlay();
+  });
+}
+
+function configureThresholdRangeForVariable(config) {
+  const { min, max } = config.colorScale;
+  highlightThresholdEl.min = String(min);
+  highlightThresholdEl.max = String(max);
+  highlightThreshold = Math.min(Math.max(highlightThreshold, min), max);
+  highlightThresholdEl.value = String(highlightThreshold);
+  updateHighlightLabel();
+}
+
+function updateHighlightLabel() {
+  const config = meta.variables[currentVariable];
+  const dirLabel = highlightDirection === "atLeast" ? "\u2265" : "\u2264";
+  highlightValueLabelEl.textContent = `Threshold: ${dirLabel} ${highlightThreshold.toFixed(1)}${config.units}`;
+}
+
+function updateHighlightOverlay() {
+  const source = map.getSource(HIGHLIGHT_SOURCE_ID);
+  if (!source) return;
+
+  if (!highlightEnabled || !currentGrid || !rowRemap) {
+    source.updateImage({ url: transparentPixelUrl() });
+    return;
+  }
+
+  const { rows, cols } = meta.grid;
+  const config = meta.variables[currentVariable];
+  const { scale, nanSentinel } = config.rawEncoding;
+  const thresholdRaw = Math.round(highlightThreshold * scale);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = cols;
+  canvas.height = rows;
+  const ctx = canvas.getContext("2d");
+  const imageData = ctx.createImageData(cols, rows);
+  const data = imageData.data;
+
+  for (let r = 0; r < rows; r++) {
+    const srcRow = rowRemap[r];
+    const rowOffset = srcRow * cols;
+    const outOffset = r * cols;
+
+    for (let c = 0; c < cols; c++) {
+      const raw = currentGrid[rowOffset + c];
+      const outIdx = (outOffset + c) * 4;
+
+      if (raw === nanSentinel) {
+        data[outIdx + 3] = 0; // no data -> fully transparent (already so in color layer)
+        continue;
+      }
+
+      const matches =
+        highlightDirection === "atLeast"
+          ? raw >= thresholdRaw
+          : raw <= thresholdRaw;
+
+      if (matches) {
+        data[outIdx + 3] = 0; // matching area: leave untouched (no dimming)
+      } else {
+        data[outIdx] = 0;
+        data[outIdx + 1] = 0;
+        data[outIdx + 2] = 0;
+        data[outIdx + 3] = HIGHLIGHT_DIM_ALPHA; // non-matching: dim
+      }
+    }
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+  source.updateImage({ url: canvas.toDataURL("image/png") });
 }

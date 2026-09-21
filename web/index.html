@@ -159,6 +159,60 @@
       font-weight: 700;
     }
 
+    #highlight-enable-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      font-size: 13px;
+    }
+
+    #highlight-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    #highlight-controls.disabled {
+      opacity: 0.4;
+      pointer-events: none;
+    }
+
+    #highlight-direction {
+      display: flex;
+      gap: 6px;
+    }
+
+    .direction-button {
+      flex: 1;
+      border: 1px solid #ccc;
+      background: #f7f7f7;
+      border-radius: 6px;
+      padding: 6px 4px;
+      font-size: 12px;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    .direction-button.active {
+      background: #4361ee;
+      border-color: #4361ee;
+      color: #fff;
+      font-weight: 600;
+    }
+
+    #highlight-value-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #444;
+    }
+
+    #highlight-threshold {
+      width: 100%;
+    }
+
     #tooltip {
       position: absolute;
       pointer-events: none;
@@ -205,6 +259,22 @@
     <h2>Week</h2>
     <div id="selected-week-label">Loading...</div>
     <div id="calendar"></div>
+
+    <h2>Highlight</h2>
+    <div id="highlight-enable-row">
+      <input type="checkbox" id="highlight-enable" />
+      <label for="highlight-enable">Highlight areas matching a threshold</label>
+    </div>
+    <div id="highlight-controls" class="disabled">
+      <div id="highlight-direction">
+        <button type="button" class="direction-button active" data-direction="atLeast">At least (&ge;)</button>
+        <button type="button" class="direction-button" data-direction="atMost">At most (&le;)</button>
+      </div>
+      <input type="range" id="highlight-threshold" step="0.1" />
+      <div id="highlight-value-row">
+        <span id="highlight-value-label">Threshold: -</span>
+      </div>
+    </div>
   </div>
 
   <div id="tooltip"></div>
