@@ -384,6 +384,7 @@ function setupHighlightControls() {
       highlightDirectionEl
         .querySelectorAll(".direction-button")
         .forEach((b) => b.classList.toggle("active", b === btn));
+      updateHighlightLabel();
       updateHighlightOverlay();
     });
   });

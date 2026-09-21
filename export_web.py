@@ -43,35 +43,33 @@ NAN_SENTINEL = -32768
 FIXED_POINT_SCALE = 100  # store value * 100 as int16
 
 # variable short-name -> config
-# Note: tg/tn/tx share the same fixed color scale (TEMP_SCALE_MIN/MAX) so
-# colors are directly comparable across the three temperature views.
-TEMP_SCALE_MIN = -25.0
-TEMP_SCALE_MAX = 45.0
-
+# Each variable uses its own sensible color scale (based on its actual
+# climatological range), so colors are NOT directly comparable between
+# tg/tn/tx - but each map makes full use of the color ramp's contrast.
 VARIABLES = {
     "tg": {
         "file": "tg_weekly_climatology_2011-2025.nc",
         "label": "Mean temperature",
         "units": "\u00b0C",
         "colormap": "RdYlBu_r",
-        "scale_min": TEMP_SCALE_MIN,
-        "scale_max": TEMP_SCALE_MAX,
+        "scale_min": -25.0,
+        "scale_max": 45.0,
     },
     "tn": {
         "file": "tn_weekly_climatology_2011-2025.nc",
         "label": "Min temperature",
         "units": "\u00b0C",
         "colormap": "RdYlBu_r",
-        "scale_min": TEMP_SCALE_MIN,
-        "scale_max": TEMP_SCALE_MAX,
+        "scale_min": -25.0,
+        "scale_max": 35.0,
     },
     "tx": {
         "file": "tx_weekly_climatology_2011-2025.nc",
         "label": "Max temperature",
         "units": "\u00b0C",
         "colormap": "RdYlBu_r",
-        "scale_min": TEMP_SCALE_MIN,
-        "scale_max": TEMP_SCALE_MAX,
+        "scale_min": -20.0,
+        "scale_max": 45.0,
     },
     "rr": {
         "file": "rr_weekly_climatology_2011-2025.nc",
