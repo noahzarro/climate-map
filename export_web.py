@@ -1,19 +1,29 @@
 """
-Export the weekly temperature climatology for web display with MapLibre GL JS.
+Export the weekly climatology datasets for web display with MapLibre GL JS.
 
-For each of the 52 climatological weeks this produces:
-  - web/data/week_XX.png  - RGBA image (colormapped, transparent over NaN/ocean),
-                            used as a MapLibre `image` source overlay.
-  - web/data/week_XX.bin  - raw grid values as little-endian Int16, fixed-point
-                            at 0.01 degC (value = raw / 100), NaN encoded as
-                            -32768. Used client-side to show the exact
-                            temperature on hover.
-  - web/data/meta.json    - bounds, grid shape, color scale, and per-week
-                            metadata (dates relabeled to the year 2027).
+For each variable (tg = mean temp, tn = min temp, tx = max temp, rr =
+precipitation) and each of the 52 climatological weeks, this produces:
+  - web/data/<var>/week_XX.png  - RGBA image (colormapped, transparent over
+                                   NaN/ocean), used as a MapLibre `image`
+                                   source overlay. Rows are pre-warped so
+                                   they are evenly spaced in Web Mercator Y
+                                   (not plain latitude degrees), to avoid
+                                   the vertical distortion that a large
+                                   latitude span would otherwise cause when
+                                   MapLibre projects the image.
+  - web/data/<var>/week_XX.bin  - raw grid values as little-endian Int16,
+                                   fixed-point (value = raw / scale), NaN
+                                   encoded as -32768. Used client-side to
+                                   show the exact value on hover. Uses the
+                                   *original* equirectangular grid (not
+                                   Mercator-warped), since hover does its
+                                   own direct lat/lon -> row/col lookup.
+  - web/data/meta.json          - bounds, grid shape, shared week list
+                                   (dates relabeled to the year 2027), and
+                                   per-variable color scale / encoding info.
 
 Image / binary row order: row 0 = northernmost latitude (top of image),
-col 0 = westernmost longitude (left of image). This matches normal raster
-image conventions.
+col 0 = westernmost longitude (left of image).
 """
 
 import json
@@ -21,23 +31,57 @@ from datetime import date
 from pathlib import Path
 
 import matplotlib
-import matplotlib.cm as cm
 import matplotlib.colors as mcolors
 import numpy as np
 import xarray as xr
 from PIL import Image
 
-INPUT_FILE = "tg_weekly_climatology_2011-2025.nc"
 OUTPUT_DIR = Path("web/data")
-
-COLORMAP = "RdYlBu_r"  # blue = cold, red = hot
-SCALE_MIN = -25.0
-SCALE_MAX = 45.0
-
 DISPLAY_YEAR = 2027  # year used only to generate human-readable week labels
 
 NAN_SENTINEL = -32768
-FIXED_POINT_SCALE = 100  # store temp * 100 as int16
+FIXED_POINT_SCALE = 100  # store value * 100 as int16
+
+# variable short-name -> config
+# Note: tg/tn/tx share the same fixed color scale (TEMP_SCALE_MIN/MAX) so
+# colors are directly comparable across the three temperature views.
+TEMP_SCALE_MIN = -25.0
+TEMP_SCALE_MAX = 45.0
+
+VARIABLES = {
+    "tg": {
+        "file": "tg_weekly_climatology_2011-2025.nc",
+        "label": "Mean temperature",
+        "units": "\u00b0C",
+        "colormap": "RdYlBu_r",
+        "scale_min": TEMP_SCALE_MIN,
+        "scale_max": TEMP_SCALE_MAX,
+    },
+    "tn": {
+        "file": "tn_weekly_climatology_2011-2025.nc",
+        "label": "Min temperature",
+        "units": "\u00b0C",
+        "colormap": "RdYlBu_r",
+        "scale_min": TEMP_SCALE_MIN,
+        "scale_max": TEMP_SCALE_MAX,
+    },
+    "tx": {
+        "file": "tx_weekly_climatology_2011-2025.nc",
+        "label": "Max temperature",
+        "units": "\u00b0C",
+        "colormap": "RdYlBu_r",
+        "scale_min": TEMP_SCALE_MIN,
+        "scale_max": TEMP_SCALE_MAX,
+    },
+    "rr": {
+        "file": "rr_weekly_climatology_2011-2025.nc",
+        "label": "Precipitation",
+        "units": "mm/day",
+        "colormap": "YlGnBu",
+        "scale_min": 0.0,
+        "scale_max": 30.0,
+    },
+}
 
 
 def _mercator_y(lat_deg: np.ndarray) -> np.ndarray:
@@ -68,7 +112,8 @@ def build_row_resampler(lat: np.ndarray, n_rows: int):
 
     Returns a function `resample(frame) -> frame_mercator` where `frame` has
     shape (len(lat), n_cols) with row 0 = lat.min() (south) ... last row =
-    lat.max() (north), matching the ascending `lat` array.
+    lat.max() (north), matching the ascending `lat` array. The returned
+    array already has row 0 = north (top of image).
     """
     lat_min, lat_max = float(lat.min()), float(lat.max())
     lat_step = float(lat[1] - lat[0])
@@ -92,33 +137,41 @@ def build_row_resampler(lat: np.ndarray, n_rows: int):
     return resample
 
 
-def main() -> None:
-    ds = xr.open_dataset(INPUT_FILE)
+def export_legend(var: str, config: dict, var_dir: Path) -> str:
+    """Write a horizontal gradient strip PNG for this variable's colormap,
+    so the frontend can show a legend that exactly matches the data
+    colors without having to hand-reproduce the colormap in CSS."""
+    colormap = matplotlib.colormaps[config["colormap"]]
+    width = 256
+    gradient = np.linspace(0, 1, width)
+    rgba = colormap(gradient, bytes=True)  # (width, 4)
+    rgba = np.tile(rgba[np.newaxis, :, :], (16, 1, 1))  # (16, width, 4)
+    img = Image.fromarray(rgba, mode="RGBA")
+    name = "legend.png"
+    img.save(var_dir / name)
+    return name
 
-    # Drop the 53rd week bucket (its Monday, 2020-12-28, is the last time
-    # step) so we end up with a normal 52-week year, matching 2027's ISO
-    # calendar (which has no week 53).
+
+def export_variable(var: str, config: dict, resample_rows, weeks_meta):
+    ds = xr.open_dataset(config["file"])
+    # Drop the 53rd week bucket (see aggregate.py) so we end up with a
+    # normal 52-week year, matching 2027's ISO calendar.
     ds = ds.isel(time=slice(0, -1))
     n_weeks = ds.sizes["time"]
-    assert n_weeks == 52, f"expected 52 weeks, got {n_weeks}"
+    assert n_weeks == len(weeks_meta), (
+        f"{var}: expected {len(weeks_meta)} weeks, got {n_weeks}"
+    )
 
-    lat = ds["latitude"].values
-    lon = ds["longitude"].values
-    lat_min, lat_max = float(lat.min()), float(lat.max())
-    lon_min, lon_max = float(lon.min()), float(lon.max())
+    var_dir = OUTPUT_DIR / var
+    var_dir.mkdir(parents=True, exist_ok=True)
 
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-
-    norm = mcolors.Normalize(vmin=SCALE_MIN, vmax=SCALE_MAX, clip=True)
-    colormap = matplotlib.colormaps[COLORMAP]
-
-    n_rows = lat.shape[0]
-    resample_rows = build_row_resampler(lat, n_rows)
-
-    weeks_meta = []
+    norm = mcolors.Normalize(
+        vmin=config["scale_min"], vmax=config["scale_max"], clip=True
+    )
+    colormap = matplotlib.colormaps[config["colormap"]]
 
     for i in range(n_weeks):
-        frame = ds["tg"].isel(time=i).values  # shape (lat, lon), lat ascending
+        frame = ds[var].isel(time=i).values  # shape (lat, lon), lat ascending
 
         # --- PNG (colorized, transparent where NaN) ---
         # Resample rows so they're evenly spaced in Mercator Y (not plain
@@ -134,7 +187,7 @@ def main() -> None:
 
         img = Image.fromarray(rgba, mode="RGBA")
         png_name = f"week_{i:02d}.png"
-        img.save(OUTPUT_DIR / png_name)
+        img.save(var_dir / png_name)
 
         # --- Raw binary (Int16 fixed-point, NaN sentinel) ---
         # Uses the *original* equirectangular grid (row 0 = north), unrelated
@@ -143,25 +196,72 @@ def main() -> None:
         frame_equirect = np.flipud(frame)
         fixed = np.round(frame_equirect * FIXED_POINT_SCALE)
         fixed = np.clip(fixed, -32767, 32767)  # clip real values only
-        fixed = np.where(np.isnan(frame_equirect), NAN_SENTINEL, fixed).astype("<i2")
+        fixed = np.where(np.isnan(frame_equirect), NAN_SENTINEL, fixed).astype(
+            "<i2"
+        )
         bin_name = f"week_{i:02d}.bin"
-        fixed.tofile(OUTPUT_DIR / bin_name)
+        fixed.tofile(var_dir / bin_name)
 
-        # --- Week label dates, relabeled to DISPLAY_YEAR ---
+    print(f"  {var}: wrote {n_weeks} weeks to {var_dir}/")
+    return frame.shape  # (rows, cols), same across variables
+
+
+def main() -> None:
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Bounds/grid are identical across variables (same source grid), so
+    # just read them once from the first variable's file.
+    first_file = next(iter(VARIABLES.values()))["file"]
+    ds0 = xr.open_dataset(first_file)
+    lat = ds0["latitude"].values
+    lon = ds0["longitude"].values
+    lat_min, lat_max = float(lat.min()), float(lat.max())
+    lon_min, lon_max = float(lon.min()), float(lon.max())
+    n_rows = lat.shape[0]
+
+    resample_rows = build_row_resampler(lat, n_rows)
+
+    # Week labels (dates relabeled to DISPLAY_YEAR) are shared across all
+    # variables since the aggregation produces the same 52 week buckets.
+    n_weeks = ds0.sizes["time"] - 1  # drop week 53
+    weeks_meta = []
+    for i in range(n_weeks):
         week_number = i + 1
         monday = date.fromisocalendar(DISPLAY_YEAR, week_number, 1)
         sunday = date.fromisocalendar(DISPLAY_YEAR, week_number, 7)
-
         weeks_meta.append(
             {
                 "index": i,
                 "week": week_number,
-                "png": png_name,
-                "bin": bin_name,
                 "monday": monday.isoformat(),
                 "sunday": sunday.isoformat(),
             }
         )
+
+    variables_meta = {}
+    grid_shape = None
+    for var, config in VARIABLES.items():
+        print(f"Exporting {var} ({config['label']}) ...")
+        grid_shape = export_variable(var, config, resample_rows, weeks_meta)
+        legend_name = export_legend(var, config, OUTPUT_DIR / var)
+        variables_meta[var] = {
+            "label": config["label"],
+            "units": config["units"],
+            "dir": var,
+            "legend": legend_name,
+            "colorScale": {
+                "colormap": config["colormap"],
+                "min": config["scale_min"],
+                "max": config["scale_max"],
+            },
+            "rawEncoding": {
+                "dtype": "int16",
+                "byteorder": "little",
+                "scale": FIXED_POINT_SCALE,
+                "nanSentinel": NAN_SENTINEL,
+                "formula": "value = raw / scale (raw == nanSentinel -> no data)",
+            },
+        }
 
     meta = {
         "bounds": {
@@ -171,33 +271,21 @@ def main() -> None:
             "latMax": lat_max,
         },
         "grid": {
-            "rows": frame.shape[0],
-            "cols": frame.shape[1],
+            "rows": grid_shape[0],
+            "cols": grid_shape[1],
             "latStep": float(lat[1] - lat[0]),
             "lonStep": float(lon[1] - lon[0]),
             # row 0 of png/bin = north, col 0 = west
         },
-        "colorScale": {
-            "colormap": COLORMAP,
-            "min": SCALE_MIN,
-            "max": SCALE_MAX,
-            "units": "degC",
-        },
-        "rawEncoding": {
-            "dtype": "int16",
-            "byteorder": "little",
-            "scale": FIXED_POINT_SCALE,
-            "nanSentinel": NAN_SENTINEL,
-            "formula": "value_degC = raw / scale (raw == nanSentinel -> no data)",
-        },
         "displayYear": DISPLAY_YEAR,
         "weeks": weeks_meta,
+        "variables": variables_meta,
+        "defaultVariable": "tg",
     }
 
     with open(OUTPUT_DIR / "meta.json", "w") as f:
         json.dump(meta, f, indent=2)
 
-    print(f"Wrote {n_weeks} weeks of PNG + BIN data to {OUTPUT_DIR}/")
     print(f"meta.json written to {OUTPUT_DIR / 'meta.json'}")
 
 

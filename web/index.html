@@ -2,70 +2,161 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Weekly Temperature Climatology (2011-2025)</title>
+  <title>Weekly Climate Climatology (2011-2025)</title>
   <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
   <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <style>
-    html, body, #map {
+    :root {
+      --sidebar-width: 320px;
+    }
+
+    html, body {
       height: 100%;
       margin: 0;
       padding: 0;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
     }
 
-    #panel {
+    #map {
       position: absolute;
-      left: 10px;
-      right: 10px;
-      bottom: 20px;
-      max-width: 640px;
-      margin: 0 auto;
-      background: rgba(255, 255, 255, 0.92);
-      border-radius: 8px;
-      padding: 12px 16px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: var(--sidebar-width);
+    }
+
+    #sidebar {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      right: 0;
+      width: var(--sidebar-width);
+      box-sizing: border-box;
+      background: #fff;
+      border-left: 1px solid #ddd;
+      box-shadow: -2px 0 8px rgba(0, 0, 0, 0.08);
+      overflow-y: auto;
+      padding: 16px;
       z-index: 1;
     }
 
-    #week-label {
-      font-weight: 600;
-      font-size: 15px;
-      margin-bottom: 6px;
-      text-align: center;
+    #sidebar h1 {
+      font-size: 16px;
+      margin: 0 0 4px;
     }
 
-    #week-slider {
-      width: 100%;
-    }
-
-    #legend {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      background: rgba(255, 255, 255, 0.92);
-      border-radius: 8px;
-      padding: 10px 12px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-      z-index: 1;
+    #sidebar h2 {
       font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #666;
+      margin: 20px 0 8px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 4px;
+    }
+
+    #selected-week-label {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: #222;
+    }
+
+    #variable-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .variable-button {
+      border: 1px solid #ccc;
+      background: #f7f7f7;
+      border-radius: 6px;
+      padding: 8px 6px;
+      font-size: 12px;
+      cursor: pointer;
+      text-align: center;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .variable-button:hover {
+      background: #eef2ff;
+    }
+
+    .variable-button.active {
+      background: #4361ee;
+      border-color: #4361ee;
+      color: #fff;
+      font-weight: 600;
     }
 
     #legend-gradient {
-      width: 180px;
+      width: 100%;
       height: 14px;
       border-radius: 3px;
-      margin: 4px 0;
-      background: linear-gradient(
-        to right,
-        #313695, #4575b4, #74add1, #abd9e9, #e0f3f8,
-        #ffffbf, #fee090, #fdae61, #f46d43, #d73027, #a50026
-      );
+      display: block;
+      image-rendering: pixelated;
     }
 
     #legend-labels {
       display: flex;
       justify-content: space-between;
+      font-size: 11px;
+      color: #444;
+      margin-top: 4px;
+    }
+
+    #calendar {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .month-block {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .month-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #555;
+    }
+
+    .month-weeks {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+
+    .week-cell {
+      width: 24px;
+      height: 24px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      background: #f2f2f2;
+      font-size: 10px;
+      color: #555;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+
+    .week-cell:hover {
+      background: #dce4ff;
+      border-color: #a9bbff;
+    }
+
+    .week-cell.selected {
+      background: #4361ee;
+      border-color: #4361ee;
+      color: #fff;
+      font-weight: 700;
     }
 
     #tooltip {
@@ -96,18 +187,26 @@
 </head>
 <body>
   <div id="map"></div>
-  <div id="legend">
-    <div>Mean daily temperature (&deg;C)</div>
-    <div id="legend-gradient"></div>
+
+  <div id="sidebar">
+    <h1>Weekly Climatology</h1>
+    <div style="font-size: 12px; color: #777;">E-OBS 2011&ndash;2025, 52-week cycle</div>
+
+    <h2>Variable</h2>
+    <div id="variable-buttons"></div>
+
+    <h2>Legend</h2>
+    <img id="legend-gradient" src="" alt="legend" />
     <div id="legend-labels">
       <span id="legend-min"></span>
       <span id="legend-max"></span>
     </div>
+
+    <h2>Week</h2>
+    <div id="selected-week-label">Loading...</div>
+    <div id="calendar"></div>
   </div>
-  <div id="panel">
-    <div id="week-label">Loading...</div>
-    <input type="range" id="week-slider" min="0" max="51" step="1" value="0" />
-  </div>
+
   <div id="tooltip"></div>
   <div id="loading">Loading week data...</div>
 

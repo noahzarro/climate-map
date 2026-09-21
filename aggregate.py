@@ -1,9 +1,9 @@
 """
-Aggregate the E-OBS daily mean temperature dataset into a single
-"climatological week" cycle.
+Aggregate the E-OBS daily datasets into a single "climatological week" cycle,
+for each of the four variables: mean/min/max temperature and precipitation.
 
-Method
-------
+Method (applied identically to every variable)
+-----------------------------------------------
 1. Keep lat/lon coordinates unchanged.
 2. Build a daily climatology: for every calendar day (month-day, e.g.
    "01-01", "02-29", ..., "12-31"), average all matching days across
@@ -19,6 +19,11 @@ This two-stage approach (day-of-year climatology, then weekly average of
 that climatology) avoids the misalignment that comes from grouping raw
 daily data directly by ISO week number across years with different
 calendars.
+
+Note: precipitation ("rr") is averaged the same way as the temperature
+variables (mean daily climatology, then mean over the week), so the output
+represents a typical/mean daily precipitation for that week - not a weekly
+total. Let me know if you'd rather have weekly totals (sum) instead.
 """
 
 from datetime import date
@@ -26,13 +31,31 @@ from datetime import date
 import numpy as np
 import xarray as xr
 
-INPUT_FILE = "tg_ens_mean_0.1deg_reg_2011-2025_v33.0e.nc"
-OUTPUT_FILE = "tg_weekly_climatology_2011-2025.nc"
 REFERENCE_YEAR = 2020  # leap year, used to define week boundaries & labels
 
+# variable short-name -> (input file, output file)
+VARIABLES = {
+    "tg": (
+        "tg_ens_mean_0.1deg_reg_2011-2025_v33.0e.nc",
+        "tg_weekly_climatology_2011-2025.nc",
+    ),
+    "tn": (
+        "tn_ens_mean_0.1deg_reg_2011-2025_v33.0e.nc",
+        "tn_weekly_climatology_2011-2025.nc",
+    ),
+    "tx": (
+        "tx_ens_mean_0.1deg_reg_2011-2025_v33.0e.nc",
+        "tx_weekly_climatology_2011-2025.nc",
+    ),
+    "rr": (
+        "rr_ens_mean_0.1deg_reg_2011-2025_v33.0e.nc",
+        "rr_weekly_climatology_2011-2025.nc",
+    ),
+}
 
-def main() -> None:
-    ds = xr.open_dataset(INPUT_FILE)
+
+def build_weekly_climatology(input_file: str) -> xr.Dataset:
+    ds = xr.open_dataset(input_file)
 
     # Step 1: daily climatology, keyed by "MM-DD" (calendar day, no year).
     month_day = ds.time.dt.strftime("%m-%d")
@@ -78,10 +101,15 @@ def main() -> None:
         "coordinate is the Monday of each ISO week in that reference "
         "year."
     )
+    return weekly
 
-    weekly.to_netcdf(OUTPUT_FILE)
-    print(weekly)
-    print(f"\nSaved to {OUTPUT_FILE}")
+
+def main() -> None:
+    for var, (input_file, output_file) in VARIABLES.items():
+        print(f"Processing {var} ({input_file}) ...")
+        weekly = build_weekly_climatology(input_file)
+        weekly.to_netcdf(output_file)
+        print(f"  -> saved {output_file}  {dict(weekly.sizes)}")
 
 
 if __name__ == "__main__":
