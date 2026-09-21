@@ -142,8 +142,8 @@ def main() -> None:
         # lat/lon -> value lookups on hover (see meta["grid"]).
         frame_equirect = np.flipud(frame)
         fixed = np.round(frame_equirect * FIXED_POINT_SCALE)
-        fixed = np.where(np.isnan(frame_equirect), NAN_SENTINEL, fixed)
-        fixed = np.clip(fixed, -32767, 32767).astype("<i2")
+        fixed = np.clip(fixed, -32767, 32767)  # clip real values only
+        fixed = np.where(np.isnan(frame_equirect), NAN_SENTINEL, fixed).astype("<i2")
         bin_name = f"week_{i:02d}.bin"
         fixed.tofile(OUTPUT_DIR / bin_name)
 

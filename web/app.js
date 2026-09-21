@@ -47,14 +47,24 @@ map.on("load", async () => {
     coordinates,
   });
 
-  map.addLayer({
-    id: IMAGE_LAYER_ID,
-    type: "raster",
-    source: IMAGE_SOURCE_ID,
-    paint: {
-      "raster-opacity": 0.75,
+  // Insert the overlay below the first symbol (label/text) layer in the
+  // basemap style, so place/country/road labels stay on top and remain
+  // readable instead of being covered by the temperature overlay.
+  const firstSymbolLayer = map
+    .getStyle()
+    .layers.find((layer) => layer.type === "symbol");
+
+  map.addLayer(
+    {
+      id: IMAGE_LAYER_ID,
+      type: "raster",
+      source: IMAGE_SOURCE_ID,
+      paint: {
+        "raster-opacity": 0.75,
+      },
     },
-  });
+    firstSymbolLayer ? firstSymbolLayer.id : undefined
+  );
 
   map.fitBounds(
     [
