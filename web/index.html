@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Weekly Temperature Climatology (2011-2025)</title>
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <style>
+    html, body, #map {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    }
+
+    #panel {
+      position: absolute;
+      left: 10px;
+      right: 10px;
+      bottom: 20px;
+      max-width: 640px;
+      margin: 0 auto;
+      background: rgba(255, 255, 255, 0.92);
+      border-radius: 8px;
+      padding: 12px 16px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+      z-index: 1;
+    }
+
+    #week-label {
+      font-weight: 600;
+      font-size: 15px;
+      margin-bottom: 6px;
+      text-align: center;
+    }
+
+    #week-slider {
+      width: 100%;
+    }
+
+    #legend {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(255, 255, 255, 0.92);
+      border-radius: 8px;
+      padding: 10px 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+      z-index: 1;
+      font-size: 12px;
+    }
+
+    #legend-gradient {
+      width: 180px;
+      height: 14px;
+      border-radius: 3px;
+      margin: 4px 0;
+      background: linear-gradient(
+        to right,
+        #313695, #4575b4, #74add1, #abd9e9, #e0f3f8,
+        #ffffbf, #fee090, #fdae61, #f46d43, #d73027, #a50026
+      );
+    }
+
+    #legend-labels {
+      display: flex;
+      justify-content: space-between;
+    }
+
+    #tooltip {
+      position: absolute;
+      pointer-events: none;
+      background: rgba(0, 0, 0, 0.75);
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      z-index: 2;
+      display: none;
+      white-space: nowrap;
+    }
+
+    #loading {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(255, 255, 255, 0.92);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 12px;
+      z-index: 1;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div id="legend">
+    <div>Mean daily temperature (&deg;C)</div>
+    <div id="legend-gradient"></div>
+    <div id="legend-labels">
+      <span id="legend-min"></span>
+      <span id="legend-max"></span>
+    </div>
+  </div>
+  <div id="panel">
+    <div id="week-label">Loading...</div>
+    <input type="range" id="week-slider" min="0" max="51" step="1" value="0" />
+  </div>
+  <div id="tooltip"></div>
+  <div id="loading">Loading week data...</div>
+
+  <script src="app.js"></script>
+</body>
+</html>
