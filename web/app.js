@@ -48,6 +48,7 @@ const map = new maplibregl.Map({
 });
 
 map.addControl(new maplibregl.NavigationControl(), "top-left");
+window.map = map; // handy for debugging in the browser console
 
 map.on("load", async () => {
   meta = await fetch(DATA_URL).then((r) => r.json());
@@ -112,17 +113,22 @@ map.on("load", async () => {
       [lonMin, latMin],
       [lonMax, latMax],
     ],
-    { padding: 20, duration: 0 }
+    { padding: 0, duration: 0 }
   );
 
   // Restrict panning/zooming so the world outside the data region isn't
-  // visible.
-  const boundsPadding = 4; // degrees
+  // visible. maxBounds is set to the exact data bbox (no extra padding),
+  // and minZoom is bumped slightly above the fitBounds zoom so a mismatch
+  // between the data's aspect ratio and the viewport's aspect ratio can
+  // never leave a blank (data-less) strip visible at the edges - we'd
+  // rather crop a sliver of the data than show empty basemap.
   map.setMaxBounds([
-    [lonMin - boundsPadding, latMin - boundsPadding],
-    [lonMax + boundsPadding, latMax + boundsPadding],
+    [lonMin, latMin],
+    [lonMax, latMax],
   ]);
-  map.setMinZoom(map.getZoom());
+  const minZoom = map.getZoom() + 0.3;
+  map.setMinZoom(minZoom);
+  map.jumpTo({ zoom: minZoom });
 
   buildVariableButtons();
   buildCalendar();
