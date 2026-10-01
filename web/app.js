@@ -61,6 +61,85 @@ sidebarToggleEl.addEventListener("click", () => {
 
 sidebarBackdropEl.addEventListener("click", () => setSidebarOpen(false));
 
+// --- Scale control (bottom-left) --------------------------------------
+// MapLibre's built-in ScaleControl measures ground distance at the
+// *vertical center* of the map container - correct for a control placed
+// near the center, but not for one anchored at the bottom-left. In the
+// Mercator projection, meters-per-pixel varies with latitude, and this
+// app's data spans a huge latitude range (~25-71 degrees N), so the true
+// scale at the bottom of the viewport can differ noticeably from the
+// scale at the vertical center. This control instead measures distance
+// directly at the bottom edge of the map container - where it's
+// visually anchored - so the displayed scale always matches that corner,
+// not some other (generally more northern, i.e. more compressed) part of
+// the visible map.
+class BottomEdgeScaleControl {
+  constructor(options = {}) {
+    this._maxWidth = options.maxWidth || 100;
+    this._update = this._update.bind(this);
+  }
+
+  onAdd(map) {
+    this._map = map;
+    this._container = document.createElement("div");
+    this._container.className = "maplibregl-ctrl maplibregl-ctrl-scale";
+    this._update();
+    this._map.on("move", this._update);
+    this._map.on("resize", this._update);
+    return this._container;
+  }
+
+  onRemove() {
+    this._container.remove();
+    this._map.off("move", this._update);
+    this._map.off("resize", this._update);
+    this._map = undefined;
+  }
+
+  getDefaultPosition() {
+    return "bottom-left";
+  }
+
+  _update() {
+    const map = this._map;
+    const maxWidth = this._maxWidth;
+
+    // y = bottom edge of the container (minus a pixel to stay in bounds),
+    // not clientHeight / 2, since that's where this control is anchored.
+    const y = map.getContainer().clientHeight - 1;
+    const left = map.unproject([0, y]);
+    const right = map.unproject([maxWidth, y]);
+    const maxMeters = left.distanceTo(right);
+
+    if (maxMeters >= 1000) {
+      setScale(this._container, maxWidth, maxMeters / 1000, "km");
+    } else {
+      setScale(this._container, maxWidth, maxMeters, "m");
+    }
+  }
+}
+
+function setScale(container, maxWidth, maxDistance, unit) {
+  const distance = getRoundScaleNum(maxDistance);
+  const ratio = distance / maxDistance;
+  container.style.width = `${maxWidth * ratio}px`;
+  container.innerHTML = `${distance}&nbsp;${unit}`;
+}
+
+// Round a raw distance down to a "nice" number (1/2/3/5/10 x a power of
+// ten) for display, same approach MapLibre's own ScaleControl uses.
+function getRoundScaleNum(num) {
+  const pow10 = Math.pow(10, `${Math.floor(num)}`.length - 1);
+  let d = num / pow10;
+  d = d >= 10 ? 10 : d >= 5 ? 5 : d >= 3 ? 3 : d >= 2 ? 2 : d >= 1 ? 1 : getDecimalRoundNum(d);
+  return pow10 * d;
+}
+
+function getDecimalRoundNum(d) {
+  const multiplier = Math.pow(10, Math.ceil(-Math.log(d) / Math.LN10));
+  return Math.round(d * multiplier) / multiplier;
+}
+
 const map = new maplibregl.Map({
   container: "map",
   style: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
@@ -69,6 +148,7 @@ const map = new maplibregl.Map({
 });
 
 map.addControl(new maplibregl.NavigationControl(), "top-left");
+map.addControl(new BottomEdgeScaleControl(), "bottom-left");
 window.map = map; // handy for debugging in the browser console
 
 map.on("load", async () => {
