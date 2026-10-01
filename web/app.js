@@ -1,10 +1,12 @@
-// Weekly climate climatology viewer.
+// Period climate climatology viewer.
 //
-// Loads data/meta.json for bounds + per-variable/per-week metadata, displays
-// the selected variable/week's pre-colored PNG as an image overlay, lets the
-// user pick the variable and the week (via a pseudo-calendar) from a right
-// sidebar, and shows the exact raw value on hover by reading from that
-// week's raw Int16 grid (data/<var>/week_XX.bin).
+// Loads data/meta.json for bounds + per-variable/per-period metadata,
+// displays the selected variable/period's pre-colored PNG as an image
+// overlay, lets the user pick the variable and the period (via a
+// pseudo-calendar) from a right sidebar, and shows the exact raw value on
+// hover by reading from that period's raw Int16 grid
+// (data/<var>/period_XX.bin). Each of the 12 months is split into 4
+// nearly-equal periods (see periods.py), for 48 periods total.
 
 const DATA_URL = "data/meta.json";
 const IMAGE_SOURCE_ID = "climate-image";
@@ -16,9 +18,9 @@ const HIGHLIGHT_DIM_ALPHA = 170; // 0-255, alpha of the dimming overlay
 
 let meta = null;
 let currentVariable = null;
-let currentWeekIndex = 0;
-let currentGrid = null; // Int16Array for the currently loaded variable/week
-const gridCache = new Map(); // "var:weekIndex" -> Int16Array
+let currentPeriodIndex = 0;
+let currentGrid = null; // Int16Array for the currently loaded variable/period
+const gridCache = new Map(); // "var:periodIndex" -> Int16Array
 
 let highlightEnabled = false;
 let highlightDirection = "atLeast"; // "atLeast" | "atMost"
@@ -30,7 +32,7 @@ const variableButtonsEl = document.getElementById("variable-buttons");
 const legendImgEl = document.getElementById("legend-gradient");
 const legendMinEl = document.getElementById("legend-min");
 const legendMaxEl = document.getElementById("legend-max");
-const selectedWeekLabelEl = document.getElementById("selected-week-label");
+const selectedPeriodLabelEl = document.getElementById("selected-period-label");
 const calendarEl = document.getElementById("calendar");
 const tooltipEl = document.getElementById("tooltip");
 const loadingEl = document.getElementById("loading");
@@ -64,7 +66,7 @@ map.on("load", async () => {
 
   map.addSource(IMAGE_SOURCE_ID, {
     type: "image",
-    url: weekPngUrl(currentVariable, 0),
+    url: periodPngUrl(currentVariable, 0),
     coordinates,
   });
 
@@ -138,7 +140,7 @@ map.on("load", async () => {
   const { rows } = meta.grid;
   rowRemap = buildMercatorRowRemap(latMin, latMax, meta.grid.latStep, rows);
 
-  await setWeek(0);
+  await setPeriod(0);
 
   map.on("mousemove", onMouseMove);
   map.on("mouseout", () => {
@@ -146,22 +148,18 @@ map.on("load", async () => {
   });
 });
 
-function weekPngUrl(variable, index) {
-  const week = meta.weeks[index];
-  return `data/${meta.variables[variable].dir}/week_${String(week.index).padStart(2, "0")}.png`;
+function periodPngUrl(variable, index) {
+  const period = meta.periods[index];
+  return `data/${meta.variables[variable].dir}/period_${String(period.index).padStart(2, "0")}.png`;
 }
 
-function weekBinUrl(variable, index) {
-  const week = meta.weeks[index];
-  return `data/${meta.variables[variable].dir}/week_${String(week.index).padStart(2, "0")}.bin`;
+function periodBinUrl(variable, index) {
+  const period = meta.periods[index];
+  return `data/${meta.variables[variable].dir}/period_${String(period.index).padStart(2, "0")}.bin`;
 }
 
-function formatWeekLabel(week) {
-  const monday = new Date(week.monday + "T00:00:00");
-  const sunday = new Date(week.sunday + "T00:00:00");
-  const fmt = (d) =>
-    d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-  return `Week ${week.week}: ${fmt(monday)} \u2013 ${fmt(sunday)}`;
+function formatPeriodLabel(period) {
+  return `${period.monthName}: ${period.label}`;
 }
 
 function buildVariableButtons() {
@@ -186,39 +184,33 @@ function updateLegend() {
 function buildCalendar() {
   calendarEl.innerHTML = "";
 
-  // Group weeks by the calendar month of their Monday date.
+  // Group periods by calendar month (1-12).
   const months = Array.from({ length: 12 }, () => []);
-  for (const week of meta.weeks) {
-    const monday = new Date(week.monday + "T00:00:00");
-    months[monday.getMonth()].push(week);
+  for (const period of meta.periods) {
+    months[period.month - 1].push(period);
   }
 
-  const monthNames = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December",
-  ];
-
-  months.forEach((weeks, monthIndex) => {
-    if (weeks.length === 0) return;
+  months.forEach((periods) => {
+    if (periods.length === 0) return;
 
     const block = document.createElement("div");
     block.className = "month-block";
 
     const label = document.createElement("div");
     label.className = "month-label";
-    label.textContent = monthNames[monthIndex];
+    label.textContent = periods[0].monthName;
     block.appendChild(label);
 
     const row = document.createElement("div");
-    row.className = "month-weeks";
+    row.className = "month-periods";
 
-    for (const week of weeks) {
+    for (const period of periods) {
       const cell = document.createElement("div");
-      cell.className = "week-cell";
-      cell.textContent = String(week.week);
-      cell.title = formatWeekLabel(week);
-      cell.dataset.index = String(week.index);
-      cell.addEventListener("click", () => setWeek(week.index));
+      cell.className = "period-cell";
+      cell.textContent = String(period.part);
+      cell.title = formatPeriodLabel(period);
+      cell.dataset.index = String(period.index);
+      cell.addEventListener("click", () => setPeriod(period.index));
       row.appendChild(cell);
     }
 
@@ -227,12 +219,12 @@ function buildCalendar() {
   });
 }
 
-function markSelectedWeekCell() {
-  const cells = calendarEl.querySelectorAll(".week-cell");
+function markSelectedPeriodCell() {
+  const cells = calendarEl.querySelectorAll(".period-cell");
   cells.forEach((cell) => {
     cell.classList.toggle(
       "selected",
-      parseInt(cell.dataset.index, 10) === currentWeekIndex
+      parseInt(cell.dataset.index, 10) === currentPeriodIndex
     );
   });
 }
@@ -250,22 +242,22 @@ async function setVariable(variable) {
 
   const source = map.getSource(IMAGE_SOURCE_ID);
   if (source) {
-    source.updateImage({ url: weekPngUrl(currentVariable, currentWeekIndex) });
+    source.updateImage({ url: periodPngUrl(currentVariable, currentPeriodIndex) });
   }
 
-  currentGrid = await loadGrid(currentVariable, currentWeekIndex);
+  currentGrid = await loadGrid(currentVariable, currentPeriodIndex);
   updateHighlightOverlay();
 }
 
-async function setWeek(index) {
-  currentWeekIndex = index;
-  const week = meta.weeks[index];
-  selectedWeekLabelEl.textContent = formatWeekLabel(week);
-  markSelectedWeekCell();
+async function setPeriod(index) {
+  currentPeriodIndex = index;
+  const period = meta.periods[index];
+  selectedPeriodLabelEl.textContent = formatPeriodLabel(period);
+  markSelectedPeriodCell();
 
   const source = map.getSource(IMAGE_SOURCE_ID);
   if (source) {
-    source.updateImage({ url: weekPngUrl(currentVariable, index) });
+    source.updateImage({ url: periodPngUrl(currentVariable, index) });
   }
 
   currentGrid = await loadGrid(currentVariable, index);
@@ -279,7 +271,7 @@ async function loadGrid(variable, index) {
   }
   loadingEl.style.display = "block";
   try {
-    const buf = await fetch(weekBinUrl(variable, index)).then((r) => r.arrayBuffer());
+    const buf = await fetch(periodBinUrl(variable, index)).then((r) => r.arrayBuffer());
     const grid = new Int16Array(buf);
     gridCache.set(cacheKey, grid);
     return grid;

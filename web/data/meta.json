@@ -11,319 +11,438 @@
     "latStep": 0.09999999968312778,
     "lonStep": 0.0999999995999481
   },
-  "displayYear": 2027,
-  "weeks": [
+  "periods": [
     {
       "index": 0,
-      "week": 1,
-      "monday": "2027-01-04",
-      "sunday": "2027-01-10"
+      "month": 1,
+      "monthName": "January",
+      "part": 1,
+      "dayStart": 1,
+      "dayEnd": 8,
+      "label": "Jan 1\u20138"
     },
     {
       "index": 1,
-      "week": 2,
-      "monday": "2027-01-11",
-      "sunday": "2027-01-17"
+      "month": 1,
+      "monthName": "January",
+      "part": 2,
+      "dayStart": 9,
+      "dayEnd": 16,
+      "label": "Jan 9\u201316"
     },
     {
       "index": 2,
-      "week": 3,
-      "monday": "2027-01-18",
-      "sunday": "2027-01-24"
+      "month": 1,
+      "monthName": "January",
+      "part": 3,
+      "dayStart": 17,
+      "dayEnd": 24,
+      "label": "Jan 17\u201324"
     },
     {
       "index": 3,
-      "week": 4,
-      "monday": "2027-01-25",
-      "sunday": "2027-01-31"
+      "month": 1,
+      "monthName": "January",
+      "part": 4,
+      "dayStart": 25,
+      "dayEnd": 31,
+      "label": "Jan 25\u201331"
     },
     {
       "index": 4,
-      "week": 5,
-      "monday": "2027-02-01",
-      "sunday": "2027-02-07"
+      "month": 2,
+      "monthName": "February",
+      "part": 1,
+      "dayStart": 1,
+      "dayEnd": 8,
+      "label": "Feb 1\u20138"
     },
     {
       "index": 5,
-      "week": 6,
-      "monday": "2027-02-08",
-      "sunday": "2027-02-14"
+      "month": 2,
+      "monthName": "February",
+      "part": 2,
+      "dayStart": 9,
+      "dayEnd": 15,
+      "label": "Feb 9\u201315"
     },
     {
       "index": 6,
-      "week": 7,
-      "monday": "2027-02-15",
-      "sunday": "2027-02-21"
+      "month": 2,
+      "monthName": "February",
+      "part": 3,
+      "dayStart": 16,
+      "dayEnd": 22,
+      "label": "Feb 16\u201322"
     },
     {
       "index": 7,
-      "week": 8,
-      "monday": "2027-02-22",
-      "sunday": "2027-02-28"
+      "month": 2,
+      "monthName": "February",
+      "part": 4,
+      "dayStart": 23,
+      "dayEnd": 29,
+      "label": "Feb 23\u201329"
     },
     {
       "index": 8,
-      "week": 9,
-      "monday": "2027-03-01",
-      "sunday": "2027-03-07"
+      "month": 3,
+      "monthName": "March",
+      "part": 1,
+      "dayStart": 1,
+      "dayEnd": 8,
+      "label": "Mar 1\u20138"
     },
     {
       "index": 9,
-      "week": 10,
-      "monday": "2027-03-08",
-      "sunday": "2027-03-14"
+      "month": 3,
+      "monthName": "March",
+      "part": 2,
+      "dayStart": 9,
+      "dayEnd": 16,
+      "label": "Mar 9\u201316"
     },
     {
       "index": 10,
-      "week": 11,
-      "monday": "2027-03-15",
-      "sunday": "2027-03-21"
+      "month": 3,
+      "monthName": "March",
+      "part": 3,
+      "dayStart": 17,
+      "dayEnd": 24,
+      "label": "Mar 17\u201324"
     },
     {
       "index": 11,
-      "week": 12,
-      "monday": "2027-03-22",
-      "sunday": "2027-03-28"
+      "month": 3,
+      "monthName": "March",
+      "part": 4,
+      "dayStart": 25,
+      "dayEnd": 31,
+      "label": "Mar 25\u201331"
     },
     {
       "index": 12,
-      "week": 13,
-      "monday": "2027-03-29",
-      "sunday": "2027-04-04"
+      "month": 4,
+      "monthName": "April",
+      "part": 1,
+      "dayStart": 1,
+      "dayEnd": 8,
+      "label": "Apr 1\u20138"
     },
     {
       "index": 13,
-      "week": 14,
-      "monday": "2027-04-05",
-      "sunday": "2027-04-11"
+      "month": 4,
+      "monthName": "April",
+      "part": 2,
+      "dayStart": 9,
+      "dayEnd": 16,
+      "label": "Apr 9\u201316"
     },
     {
       "index": 14,
-      "week": 15,
-      "monday": "2027-04-12",
-      "sunday": "2027-04-18"
+      "month": 4,
+      "monthName": "April",
+      "part": 3,
+      "dayStart": 17,
+      "dayEnd": 23,
+      "label": "Apr 17\u201323"
     },
     {
       "index": 15,
-      "week": 16,
-      "monday": "2027-04-19",
-      "sunday": "2027-04-25"
+      "month": 4,
+      "monthName": "April",
+      "part": 4,
+      "dayStart": 24,
+      "dayEnd": 30,
+      "label": "Apr 24\u201330"
     },
     {
       "index": 16,
-      "week": 17,
-      "monday": "2027-04-26",
-      "sunday": "2027-05-02"
+      "month": 5,
+      "monthName": "May",
+      "part": 1,
+      "dayStart": 1,
+      "dayEnd": 8,
+      "label": "May 1\u20138"
     },
     {
       "index": 17,
-      "week": 18,
-      "monday": "2027-05-03",
-      "sunday": "2027-05-09"
+      "month": 5,
+      "monthName": "May",
+      "part": 2,
+      "dayStart": 9,
+      "dayEnd": 16,
+      "label": "May 9\u201316"
     },
     {
       "index": 18,
-      "week": 19,
-      "monday": "2027-05-10",
-      "sunday": "2027-05-16"
+      "month": 5,
+      "monthName": "May",
+      "part": 3,
+      "dayStart": 17,
+      "dayEnd": 24,
+      "label": "May 17\u201324"
     },
     {
       "index": 19,
-      "week": 20,
-      "monday": "2027-05-17",
-      "sunday": "2027-05-23"
+      "month": 5,
+      "monthName": "May",
+      "part": 4,
+      "dayStart": 25,
+      "dayEnd": 31,
+      "label": "May 25\u201331"
     },
     {
       "index": 20,
-      "week": 21,
-      "monday": "2027-05-24",
-      "sunday": "2027-05-30"
+      "month": 6,
+      "monthName": "June",
+      "part": 1,
+      "dayStart": 1,
+      "dayEnd": 8,
+      "label": "Jun 1\u20138"
     },
     {
       "index": 21,
-      "week": 22,
-      "monday": "2027-05-31",
-      "sunday": "2027-06-06"
+      "month": 6,
+      "monthName": "June",
+      "part": 2,
+      "dayStart": 9,
+      "dayEnd": 16,
+      "label": "Jun 9\u201316"
     },
     {
       "index": 22,
-      "week": 23,
-      "monday": "2027-06-07",
-      "sunday": "2027-06-13"
+      "month": 6,
+      "monthName": "June",
+      "part": 3,
+      "dayStart": 17,
+      "dayEnd": 23,
+      "label": "Jun 17\u201323"
     },
     {
       "index": 23,
-      "week": 24,
-      "monday": "2027-06-14",
-      "sunday": "2027-06-20"
+      "month": 6,
+      "monthName": "June",
+      "part": 4,
+      "dayStart": 24,
+      "dayEnd": 30,
+      "label": "Jun 24\u201330"
     },
     {
       "index": 24,
-      "week": 25,
-      "monday": "2027-06-21",
-      "sunday": "2027-06-27"
+      "month": 7,
+      "monthName": "July",
+      "part": 1,
+      "dayStart": 1,
+      "dayEnd": 8,
+      "label": "Jul 1\u20138"
     },
     {
       "index": 25,
-      "week": 26,
-      "monday": "2027-06-28",
-      "sunday": "2027-07-04"
+      "month": 7,
+      "monthName": "July",
+      "part": 2,
+      "dayStart": 9,
+      "dayEnd": 16,
+      "label": "Jul 9\u201316"
     },
     {
       "index": 26,
-      "week": 27,
-      "monday": "2027-07-05",
-      "sunday": "2027-07-11"
+      "month": 7,
+      "monthName": "July",
+      "part": 3,
+      "dayStart": 17,
+      "dayEnd": 24,
+      "label": "Jul 17\u201324"
     },
     {
       "index": 27,
-      "week": 28,
-      "monday": "2027-07-12",
-      "sunday": "2027-07-18"
+      "month": 7,
+      "monthName": "July",
+      "part": 4,
+      "dayStart": 25,
+      "dayEnd": 31,
+      "label": "Jul 25\u201331"
     },
     {
       "index": 28,
-      "week": 29,
-      "monday": "2027-07-19",
-      "sunday": "2027-07-25"
+      "month": 8,
+      "monthName": "August",
+      "part": 1,
+      "dayStart": 1,
+      "dayEnd": 8,
+      "label": "Aug 1\u20138"
     },
     {
       "index": 29,
-      "week": 30,
-      "monday": "2027-07-26",
-      "sunday": "2027-08-01"
+      "month": 8,
+      "monthName": "August",
+      "part": 2,
+      "dayStart": 9,
+      "dayEnd": 16,
+      "label": "Aug 9\u201316"
     },
     {
       "index": 30,
-      "week": 31,
-      "monday": "2027-08-02",
-      "sunday": "2027-08-08"
+      "month": 8,
+      "monthName": "August",
+      "part": 3,
+      "dayStart": 17,
+      "dayEnd": 24,
+      "label": "Aug 17\u201324"
     },
     {
       "index": 31,
-      "week": 32,
-      "monday": "2027-08-09",
-      "sunday": "2027-08-15"
+      "month": 8,
+      "monthName": "August",
+      "part": 4,
+      "dayStart": 25,
+      "dayEnd": 31,
+      "label": "Aug 25\u201331"
     },
     {
       "index": 32,
-      "week": 33,
-      "monday": "2027-08-16",
-      "sunday": "2027-08-22"
+      "month": 9,
+      "monthName": "September",
+      "part": 1,
+      "dayStart": 1,
+      "dayEnd": 8,
+      "label": "Sep 1\u20138"
     },
     {
       "index": 33,
-      "week": 34,
-      "monday": "2027-08-23",
-      "sunday": "2027-08-29"
+      "month": 9,
+      "monthName": "September",
+      "part": 2,
+      "dayStart": 9,
+      "dayEnd": 16,
+      "label": "Sep 9\u201316"
     },
     {
       "index": 34,
-      "week": 35,
-      "monday": "2027-08-30",
-      "sunday": "2027-09-05"
+      "month": 9,
+      "monthName": "September",
+      "part": 3,
+      "dayStart": 17,
+      "dayEnd": 23,
+      "label": "Sep 17\u201323"
     },
     {
       "index": 35,
-      "week": 36,
-      "monday": "2027-09-06",
-      "sunday": "2027-09-12"
+      "month": 9,
+      "monthName": "September",
+      "part": 4,
+      "dayStart": 24,
+      "dayEnd": 30,
+      "label": "Sep 24\u201330"
     },
     {
       "index": 36,
-      "week": 37,
-      "monday": "2027-09-13",
-      "sunday": "2027-09-19"
+      "month": 10,
+      "monthName": "October",
+      "part": 1,
+      "dayStart": 1,
+      "dayEnd": 8,
+      "label": "Oct 1\u20138"
     },
     {
       "index": 37,
-      "week": 38,
-      "monday": "2027-09-20",
-      "sunday": "2027-09-26"
+      "month": 10,
+      "monthName": "October",
+      "part": 2,
+      "dayStart": 9,
+      "dayEnd": 16,
+      "label": "Oct 9\u201316"
     },
     {
       "index": 38,
-      "week": 39,
-      "monday": "2027-09-27",
-      "sunday": "2027-10-03"
+      "month": 10,
+      "monthName": "October",
+      "part": 3,
+      "dayStart": 17,
+      "dayEnd": 24,
+      "label": "Oct 17\u201324"
     },
     {
       "index": 39,
-      "week": 40,
-      "monday": "2027-10-04",
-      "sunday": "2027-10-10"
+      "month": 10,
+      "monthName": "October",
+      "part": 4,
+      "dayStart": 25,
+      "dayEnd": 31,
+      "label": "Oct 25\u201331"
     },
     {
       "index": 40,
-      "week": 41,
-      "monday": "2027-10-11",
-      "sunday": "2027-10-17"
+      "month": 11,
+      "monthName": "November",
+      "part": 1,
+      "dayStart": 1,
+      "dayEnd": 8,
+      "label": "Nov 1\u20138"
     },
     {
       "index": 41,
-      "week": 42,
-      "monday": "2027-10-18",
-      "sunday": "2027-10-24"
+      "month": 11,
+      "monthName": "November",
+      "part": 2,
+      "dayStart": 9,
+      "dayEnd": 16,
+      "label": "Nov 9\u201316"
     },
     {
       "index": 42,
-      "week": 43,
-      "monday": "2027-10-25",
-      "sunday": "2027-10-31"
+      "month": 11,
+      "monthName": "November",
+      "part": 3,
+      "dayStart": 17,
+      "dayEnd": 23,
+      "label": "Nov 17\u201323"
     },
     {
       "index": 43,
-      "week": 44,
-      "monday": "2027-11-01",
-      "sunday": "2027-11-07"
+      "month": 11,
+      "monthName": "November",
+      "part": 4,
+      "dayStart": 24,
+      "dayEnd": 30,
+      "label": "Nov 24\u201330"
     },
     {
       "index": 44,
-      "week": 45,
-      "monday": "2027-11-08",
-      "sunday": "2027-11-14"
+      "month": 12,
+      "monthName": "December",
+      "part": 1,
+      "dayStart": 1,
+      "dayEnd": 8,
+      "label": "Dec 1\u20138"
     },
     {
       "index": 45,
-      "week": 46,
-      "monday": "2027-11-15",
-      "sunday": "2027-11-21"
+      "month": 12,
+      "monthName": "December",
+      "part": 2,
+      "dayStart": 9,
+      "dayEnd": 16,
+      "label": "Dec 9\u201316"
     },
     {
       "index": 46,
-      "week": 47,
-      "monday": "2027-11-22",
-      "sunday": "2027-11-28"
+      "month": 12,
+      "monthName": "December",
+      "part": 3,
+      "dayStart": 17,
+      "dayEnd": 24,
+      "label": "Dec 17\u201324"
     },
     {
       "index": 47,
-      "week": 48,
-      "monday": "2027-11-29",
-      "sunday": "2027-12-05"
-    },
-    {
-      "index": 48,
-      "week": 49,
-      "monday": "2027-12-06",
-      "sunday": "2027-12-12"
-    },
-    {
-      "index": 49,
-      "week": 50,
-      "monday": "2027-12-13",
-      "sunday": "2027-12-19"
-    },
-    {
-      "index": 50,
-      "week": 51,
-      "monday": "2027-12-20",
-      "sunday": "2027-12-26"
-    },
-    {
-      "index": 51,
-      "week": 52,
-      "monday": "2027-12-27",
-      "sunday": "2028-01-02"
+      "month": 12,
+      "monthName": "December",
+      "part": 4,
+      "dayStart": 25,
+      "dayEnd": 31,
+      "label": "Dec 25\u201331"
     }
   ],
   "variables": {
