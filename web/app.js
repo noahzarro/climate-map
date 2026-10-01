@@ -41,6 +41,25 @@ const highlightControlsEl = document.getElementById("highlight-controls");
 const highlightDirectionEl = document.getElementById("highlight-direction");
 const highlightThresholdEl = document.getElementById("highlight-threshold");
 const highlightValueLabelEl = document.getElementById("highlight-value-label");
+const sidebarEl = document.getElementById("sidebar");
+const sidebarToggleEl = document.getElementById("sidebar-toggle");
+const sidebarBackdropEl = document.getElementById("sidebar-backdrop");
+
+// --- Collapsible sidebar (small/mobile viewports) ---------------------
+// On wider viewports the sidebar is permanently visible (see CSS); below
+// the mobile breakpoint it's an off-canvas overlay toggled by the
+// floating button / backdrop below.
+function setSidebarOpen(open) {
+  sidebarEl.classList.toggle("open", open);
+  sidebarBackdropEl.classList.toggle("visible", open);
+  sidebarToggleEl.setAttribute("aria-expanded", String(open));
+}
+
+sidebarToggleEl.addEventListener("click", () => {
+  setSidebarOpen(!sidebarEl.classList.contains("open"));
+});
+
+sidebarBackdropEl.addEventListener("click", () => setSidebarOpen(false));
 
 const map = new maplibregl.Map({
   container: "map",
