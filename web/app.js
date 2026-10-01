@@ -1,14 +1,19 @@
 // Period climate climatology viewer.
 //
-// Loads data/meta.json for bounds + per-variable/per-period metadata,
+// Loads web/data/meta.json for bounds + per-variable/per-period metadata,
 // displays the selected variable/period's pre-colored PNG as an image
 // overlay, lets the user pick the variable and the period (via a
 // pseudo-calendar) from a right sidebar, and shows the exact raw value on
 // hover by reading from that period's raw Int16 grid
-// (data/<var>/period_XX.bin). Each of the 12 months is split into 4
+// (web/data/<var>/period_XX.bin). Each of the 12 months is split into 4
 // nearly-equal periods (see periods.py), for 48 periods total.
+//
+// This file is loaded from index.html at the repo root (<script
+// src="web/app.js">), so all relative data paths below are prefixed with
+// "web/" to resolve correctly against that document, not against this
+// script's own location.
 
-const DATA_URL = "data/meta.json";
+const DATA_URL = "web/data/meta.json";
 const IMAGE_SOURCE_ID = "climate-image";
 const IMAGE_LAYER_ID = "climate-layer";
 const HIGHLIGHT_SOURCE_ID = "climate-highlight";
@@ -249,12 +254,12 @@ map.on("load", async () => {
 
 function periodPngUrl(variable, index) {
   const period = meta.periods[index];
-  return `data/${meta.variables[variable].dir}/period_${String(period.index).padStart(2, "0")}.png`;
+  return `web/data/${meta.variables[variable].dir}/period_${String(period.index).padStart(2, "0")}.png`;
 }
 
 function periodBinUrl(variable, index) {
   const period = meta.periods[index];
-  return `data/${meta.variables[variable].dir}/period_${String(period.index).padStart(2, "0")}.bin`;
+  return `web/data/${meta.variables[variable].dir}/period_${String(period.index).padStart(2, "0")}.bin`;
 }
 
 function formatPeriodLabel(period) {
@@ -275,7 +280,7 @@ function buildVariableButtons() {
 
 function updateLegend() {
   const config = meta.variables[currentVariable];
-  legendImgEl.src = `data/${config.dir}/${config.legend}`;
+  legendImgEl.src = `web/data/${config.dir}/${config.legend}`;
   legendMinEl.textContent = `${config.colorScale.min}${config.units}`;
   legendMaxEl.textContent = `${config.colorScale.max}${config.units}`;
 }
