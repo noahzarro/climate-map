@@ -150,8 +150,39 @@ def export_legend(var: str, config: dict, var_dir: Path) -> str:
     return name
 
 
-def export_variable(var: str, config: dict, resample_rows, weeks_meta):
+def compute_valid_bbox(files: list[str]) -> tuple[slice, slice]:
+    """
+    Find the smallest contiguous (lat, lon) index range that contains all
+    non-NaN data across all variable files, so the exported grid/bounds can
+    be trimmed of NaN-only edge rows/columns (e.g. ocean-only or
+    outside-coverage margins of the source rectangular grid) instead of
+    spanning the full raw grid extent.
+    """
+    valid_mask = None
+    for file in files:
+        ds = xr.open_dataset(file)
+        var_name = next(iter(ds.data_vars))
+        mask = ds[var_name].notnull().any(dim="time").values  # (lat, lon)
+        valid_mask = mask if valid_mask is None else (valid_mask | mask)
+        ds.close()
+
+    lat_valid_idx = np.where(valid_mask.any(axis=1))[0]
+    lon_valid_idx = np.where(valid_mask.any(axis=0))[0]
+    if lat_valid_idx.size == 0 or lon_valid_idx.size == 0:
+        raise ValueError("No valid (non-NaN) data found in any variable file")
+
+    lat_slice = slice(int(lat_valid_idx.min()), int(lat_valid_idx.max()) + 1)
+    lon_slice = slice(int(lon_valid_idx.min()), int(lon_valid_idx.max()) + 1)
+    return lat_slice, lon_slice
+
+
+def export_variable(
+    var: str, config: dict, resample_rows, weeks_meta, lat_slice: slice, lon_slice: slice
+):
     ds = xr.open_dataset(config["file"])
+    # Crop to the bounding box of actual (non-NaN) data across all
+    # variables, trimming NaN-only edge rows/columns of the raw grid.
+    ds = ds.isel(latitude=lat_slice, longitude=lon_slice)
     # Drop the 53rd week bucket (see aggregate.py) so we end up with a
     # normal 52-week year, matching 2027's ISO calendar.
     ds = ds.isel(time=slice(0, -1))
@@ -207,12 +238,20 @@ def export_variable(var: str, config: dict, resample_rows, weeks_meta):
 def main() -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    # Bounds/grid are identical across variables (same source grid), so
-    # just read them once from the first variable's file.
+    # Grid resolution/shape is identical across variables (same source
+    # grid), so just read coordinates once from the first variable's file.
+    # The *extent* of actual (non-NaN) data can differ slightly at the
+    # edges though, so bounds are trimmed to the bounding box of valid data
+    # across all variables (see compute_valid_bbox), rather than spanning
+    # the full raw grid, which often has NaN-only margins (ocean / outside
+    # coverage).
+    all_files = [config["file"] for config in VARIABLES.values()]
+    lat_slice, lon_slice = compute_valid_bbox(all_files)
+
     first_file = next(iter(VARIABLES.values()))["file"]
     ds0 = xr.open_dataset(first_file)
-    lat = ds0["latitude"].values
-    lon = ds0["longitude"].values
+    lat = ds0["latitude"].values[lat_slice]
+    lon = ds0["longitude"].values[lon_slice]
     lat_min, lat_max = float(lat.min()), float(lat.max())
     lon_min, lon_max = float(lon.min()), float(lon.max())
     n_rows = lat.shape[0]
@@ -240,7 +279,9 @@ def main() -> None:
     grid_shape = None
     for var, config in VARIABLES.items():
         print(f"Exporting {var} ({config['label']}) ...")
-        grid_shape = export_variable(var, config, resample_rows, weeks_meta)
+        grid_shape = export_variable(
+            var, config, resample_rows, weeks_meta, lat_slice, lon_slice
+        )
         legend_name = export_legend(var, config, OUTPUT_DIR / var)
         variables_meta[var] = {
             "label": config["label"],
