@@ -1,0 +1,404 @@
+{
+  "bounds": {
+    "lonMin": -24.950139509200024,
+    "lonMax": 44.94986021116379,
+    "latMin": 25.049860609910866,
+    "latMax": 70.9498604644665
+  },
+  "grid": {
+    "rows": 460,
+    "cols": 700,
+    "latStep": 0.09999999968312778,
+    "lonStep": 0.0999999995999481
+  },
+  "displayYear": 2027,
+  "weeks": [
+    {
+      "index": 0,
+      "week": 1,
+      "monday": "2027-01-04",
+      "sunday": "2027-01-10"
+    },
+    {
+      "index": 1,
+      "week": 2,
+      "monday": "2027-01-11",
+      "sunday": "2027-01-17"
+    },
+    {
+      "index": 2,
+      "week": 3,
+      "monday": "2027-01-18",
+      "sunday": "2027-01-24"
+    },
+    {
+      "index": 3,
+      "week": 4,
+      "monday": "2027-01-25",
+      "sunday": "2027-01-31"
+    },
+    {
+      "index": 4,
+      "week": 5,
+      "monday": "2027-02-01",
+      "sunday": "2027-02-07"
+    },
+    {
+      "index": 5,
+      "week": 6,
+      "monday": "2027-02-08",
+      "sunday": "2027-02-14"
+    },
+    {
+      "index": 6,
+      "week": 7,
+      "monday": "2027-02-15",
+      "sunday": "2027-02-21"
+    },
+    {
+      "index": 7,
+      "week": 8,
+      "monday": "2027-02-22",
+      "sunday": "2027-02-28"
+    },
+    {
+      "index": 8,
+      "week": 9,
+      "monday": "2027-03-01",
+      "sunday": "2027-03-07"
+    },
+    {
+      "index": 9,
+      "week": 10,
+      "monday": "2027-03-08",
+      "sunday": "2027-03-14"
+    },
+    {
+      "index": 10,
+      "week": 11,
+      "monday": "2027-03-15",
+      "sunday": "2027-03-21"
+    },
+    {
+      "index": 11,
+      "week": 12,
+      "monday": "2027-03-22",
+      "sunday": "2027-03-28"
+    },
+    {
+      "index": 12,
+      "week": 13,
+      "monday": "2027-03-29",
+      "sunday": "2027-04-04"
+    },
+    {
+      "index": 13,
+      "week": 14,
+      "monday": "2027-04-05",
+      "sunday": "2027-04-11"
+    },
+    {
+      "index": 14,
+      "week": 15,
+      "monday": "2027-04-12",
+      "sunday": "2027-04-18"
+    },
+    {
+      "index": 15,
+      "week": 16,
+      "monday": "2027-04-19",
+      "sunday": "2027-04-25"
+    },
+    {
+      "index": 16,
+      "week": 17,
+      "monday": "2027-04-26",
+      "sunday": "2027-05-02"
+    },
+    {
+      "index": 17,
+      "week": 18,
+      "monday": "2027-05-03",
+      "sunday": "2027-05-09"
+    },
+    {
+      "index": 18,
+      "week": 19,
+      "monday": "2027-05-10",
+      "sunday": "2027-05-16"
+    },
+    {
+      "index": 19,
+      "week": 20,
+      "monday": "2027-05-17",
+      "sunday": "2027-05-23"
+    },
+    {
+      "index": 20,
+      "week": 21,
+      "monday": "2027-05-24",
+      "sunday": "2027-05-30"
+    },
+    {
+      "index": 21,
+      "week": 22,
+      "monday": "2027-05-31",
+      "sunday": "2027-06-06"
+    },
+    {
+      "index": 22,
+      "week": 23,
+      "monday": "2027-06-07",
+      "sunday": "2027-06-13"
+    },
+    {
+      "index": 23,
+      "week": 24,
+      "monday": "2027-06-14",
+      "sunday": "2027-06-20"
+    },
+    {
+      "index": 24,
+      "week": 25,
+      "monday": "2027-06-21",
+      "sunday": "2027-06-27"
+    },
+    {
+      "index": 25,
+      "week": 26,
+      "monday": "2027-06-28",
+      "sunday": "2027-07-04"
+    },
+    {
+      "index": 26,
+      "week": 27,
+      "monday": "2027-07-05",
+      "sunday": "2027-07-11"
+    },
+    {
+      "index": 27,
+      "week": 28,
+      "monday": "2027-07-12",
+      "sunday": "2027-07-18"
+    },
+    {
+      "index": 28,
+      "week": 29,
+      "monday": "2027-07-19",
+      "sunday": "2027-07-25"
+    },
+    {
+      "index": 29,
+      "week": 30,
+      "monday": "2027-07-26",
+      "sunday": "2027-08-01"
+    },
+    {
+      "index": 30,
+      "week": 31,
+      "monday": "2027-08-02",
+      "sunday": "2027-08-08"
+    },
+    {
+      "index": 31,
+      "week": 32,
+      "monday": "2027-08-09",
+      "sunday": "2027-08-15"
+    },
+    {
+      "index": 32,
+      "week": 33,
+      "monday": "2027-08-16",
+      "sunday": "2027-08-22"
+    },
+    {
+      "index": 33,
+      "week": 34,
+      "monday": "2027-08-23",
+      "sunday": "2027-08-29"
+    },
+    {
+      "index": 34,
+      "week": 35,
+      "monday": "2027-08-30",
+      "sunday": "2027-09-05"
+    },
+    {
+      "index": 35,
+      "week": 36,
+      "monday": "2027-09-06",
+      "sunday": "2027-09-12"
+    },
+    {
+      "index": 36,
+      "week": 37,
+      "monday": "2027-09-13",
+      "sunday": "2027-09-19"
+    },
+    {
+      "index": 37,
+      "week": 38,
+      "monday": "2027-09-20",
+      "sunday": "2027-09-26"
+    },
+    {
+      "index": 38,
+      "week": 39,
+      "monday": "2027-09-27",
+      "sunday": "2027-10-03"
+    },
+    {
+      "index": 39,
+      "week": 40,
+      "monday": "2027-10-04",
+      "sunday": "2027-10-10"
+    },
+    {
+      "index": 40,
+      "week": 41,
+      "monday": "2027-10-11",
+      "sunday": "2027-10-17"
+    },
+    {
+      "index": 41,
+      "week": 42,
+      "monday": "2027-10-18",
+      "sunday": "2027-10-24"
+    },
+    {
+      "index": 42,
+      "week": 43,
+      "monday": "2027-10-25",
+      "sunday": "2027-10-31"
+    },
+    {
+      "index": 43,
+      "week": 44,
+      "monday": "2027-11-01",
+      "sunday": "2027-11-07"
+    },
+    {
+      "index": 44,
+      "week": 45,
+      "monday": "2027-11-08",
+      "sunday": "2027-11-14"
+    },
+    {
+      "index": 45,
+      "week": 46,
+      "monday": "2027-11-15",
+      "sunday": "2027-11-21"
+    },
+    {
+      "index": 46,
+      "week": 47,
+      "monday": "2027-11-22",
+      "sunday": "2027-11-28"
+    },
+    {
+      "index": 47,
+      "week": 48,
+      "monday": "2027-11-29",
+      "sunday": "2027-12-05"
+    },
+    {
+      "index": 48,
+      "week": 49,
+      "monday": "2027-12-06",
+      "sunday": "2027-12-12"
+    },
+    {
+      "index": 49,
+      "week": 50,
+      "monday": "2027-12-13",
+      "sunday": "2027-12-19"
+    },
+    {
+      "index": 50,
+      "week": 51,
+      "monday": "2027-12-20",
+      "sunday": "2027-12-26"
+    },
+    {
+      "index": 51,
+      "week": 52,
+      "monday": "2027-12-27",
+      "sunday": "2028-01-02"
+    }
+  ],
+  "variables": {
+    "tg": {
+      "label": "Mean temperature",
+      "units": "\u00b0C",
+      "dir": "tg",
+      "legend": "legend.png",
+      "colorScale": {
+        "colormap": "RdYlBu_r",
+        "min": -25.0,
+        "max": 45.0
+      },
+      "rawEncoding": {
+        "dtype": "int16",
+        "byteorder": "little",
+        "scale": 100,
+        "nanSentinel": -32768,
+        "formula": "value = raw / scale (raw == nanSentinel -> no data)"
+      }
+    },
+    "tn": {
+      "label": "Min temperature",
+      "units": "\u00b0C",
+      "dir": "tn",
+      "legend": "legend.png",
+      "colorScale": {
+        "colormap": "RdYlBu_r",
+        "min": -25.0,
+        "max": 35.0
+      },
+      "rawEncoding": {
+        "dtype": "int16",
+        "byteorder": "little",
+        "scale": 100,
+        "nanSentinel": -32768,
+        "formula": "value = raw / scale (raw == nanSentinel -> no data)"
+      }
+    },
+    "tx": {
+      "label": "Max temperature",
+      "units": "\u00b0C",
+      "dir": "tx",
+      "legend": "legend.png",
+      "colorScale": {
+        "colormap": "RdYlBu_r",
+        "min": -20.0,
+        "max": 45.0
+      },
+      "rawEncoding": {
+        "dtype": "int16",
+        "byteorder": "little",
+        "scale": 100,
+        "nanSentinel": -32768,
+        "formula": "value = raw / scale (raw == nanSentinel -> no data)"
+      }
+    },
+    "rr": {
+      "label": "Precipitation",
+      "units": "mm/day",
+      "dir": "rr",
+      "legend": "legend.png",
+      "colorScale": {
+        "colormap": "YlGnBu",
+        "min": 0.0,
+        "max": 30.0
+      },
+      "rawEncoding": {
+        "dtype": "int16",
+        "byteorder": "little",
+        "scale": 100,
+        "nanSentinel": -32768,
+        "formula": "value = raw / scale (raw == nanSentinel -> no data)"
+      }
+    }
+  },
+  "defaultVariable": "tg"
+}
