@@ -313,16 +313,41 @@ function onMouseMove(e) {
   const raw = currentGrid[row * cols + col];
   const config = meta.variables[currentVariable];
 
-  tooltipEl.style.left = `${e.point.x + 14}px`;
-  tooltipEl.style.top = `${e.point.y + 14}px`;
-  tooltipEl.style.display = "block";
-
   if (raw === config.rawEncoding.nanSentinel) {
     tooltipEl.textContent = "No data (ocean)";
   } else {
     const value = raw / config.rawEncoding.scale;
     tooltipEl.textContent = `${config.label}: ${value.toFixed(1)}${config.units}`;
   }
+
+  positionTooltip(e.point.x, e.point.y);
+}
+
+// Position the tooltip near the cursor, offset by 14px, but clamped so it
+// never extends past the viewport edges (which would otherwise grow the
+// document size and show a scrollbar).
+function positionTooltip(pointX, pointY) {
+  // Must be visible before measuring, since a display:none element always
+  // reports zero offsetWidth/offsetHeight.
+  tooltipEl.style.display = "block";
+
+  const OFFSET = 14;
+  const { offsetWidth: width, offsetHeight: height } = tooltipEl;
+
+  let left = pointX + OFFSET;
+  if (left + width > window.innerWidth) {
+    left = pointX - OFFSET - width;
+  }
+  left = Math.max(0, Math.min(left, window.innerWidth - width));
+
+  let top = pointY + OFFSET;
+  if (top + height > window.innerHeight) {
+    top = pointY - OFFSET - height;
+  }
+  top = Math.max(0, Math.min(top, window.innerHeight - height));
+
+  tooltipEl.style.left = `${left}px`;
+  tooltipEl.style.top = `${top}px`;
 }
 
 // --- Highlight (threshold) overlay -----------------------------------
