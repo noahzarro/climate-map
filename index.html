@@ -316,6 +316,83 @@
         display: block;
       }
     }
+
+    #info-button {
+      position: absolute;
+      top: 10px;
+      right: calc(var(--sidebar-width) + 10px);
+      z-index: 3;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: none;
+      background: #fff;
+      box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+      font-size: 18px;
+      font-weight: 700;
+      font-family: Georgia, serif;
+      color: #4361ee;
+      cursor: pointer;
+    }
+
+    @media (max-width: 700px) {
+      #info-button {
+        right: 64px; /* left of the sidebar toggle */
+        top: 17px;
+      }
+    }
+
+    #info-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.4);
+    }
+
+    #info-modal.open {
+      display: flex;
+    }
+
+    #info-content {
+      position: relative;
+      background: #fff;
+      border-radius: 8px;
+      padding: 20px 24px;
+      max-width: 520px;
+      max-height: 80vh;
+      overflow-y: auto;
+      margin: 16px;
+      font-size: 14px;
+      line-height: 1.5;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    #info-content h2 {
+      margin: 0 0 8px;
+    }
+
+    #info-content h3 {
+      margin: 16px 0 4px;
+      font-size: 14px;
+    }
+
+    #info-content p, #info-content ul {
+      margin: 4px 0;
+    }
+
+    #info-close {
+      position: absolute;
+      top: 8px;
+      right: 10px;
+      border: none;
+      background: none;
+      font-size: 22px;
+      cursor: pointer;
+      color: #666;
+    }
   </style>
 </head>
 <body>
@@ -354,6 +431,33 @@
     <div id="selected-period-label">Loading...</div>
     <div id="calendar"></div>
 
+  </div>
+
+  <button id="info-button" type="button" aria-label="About the data">i</button>
+  <div id="info-modal" role="dialog" aria-modal="true" aria-labelledby="info-title">
+    <div id="info-content">
+      <button id="info-close" type="button" aria-label="Close">&times;</button>
+      <h2 id="info-title">How the values are generated</h2>
+
+      <h3>Source data</h3>
+      <p>Daily gridded observations from E-OBS (ensemble mean, 0.1&deg; grid, v33.0e) for 2011&ndash;2025: mean, minimum and maximum temperature and precipitation.</p>
+
+      <h3>Periods</h3>
+      <p>Every calendar day (e.g. 15 March) is first averaged across all 15 years. Each month is then split into 4 nearly equal parts (48 periods in total; February is treated as 29 days), and the daily averages within each part are averaged again.</p>
+
+      <h3>The five values</h3>
+      <ul>
+        <li><b>Mean / min / max temperature:</b> typical daily mean, minimum and maximum temperature in the period (&deg;C).</li>
+        <li><b>Precipitation:</b> typical daily precipitation in the period (mm/day), not a total.</li>
+        <li><b>Wet days per month:</b> the share of days with at least 1 mm of precipitation, scaled to a full month (February = 28.25 days).</li>
+      </ul>
+
+      <h3>Filter</h3>
+      <p>Areas outside the chosen threshold are dimmed. Mean and min temperature hide values below the slider; max temperature, precipitation and wet days hide values above it. The dimmed edges are smoothed for display only.</p>
+
+      <h3>Note</h3>
+      <p>These are climatological averages over 2011&ndash;2025, not forecasts or values for a specific year. Click the map to see all five values at a point.</p>
+    </div>
   </div>
 
   <div id="tooltip"></div>

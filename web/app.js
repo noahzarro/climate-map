@@ -806,3 +806,19 @@ function boxBlur(src, cols, rows, radius) {
   }
   return out;
 }
+
+// --- Info modal ---------------------------------------------------------
+
+const infoModalEl = document.getElementById("info-modal");
+document
+  .getElementById("info-button")
+  .addEventListener("click", () => infoModalEl.classList.add("open"));
+document
+  .getElementById("info-close")
+  .addEventListener("click", () => infoModalEl.classList.remove("open"));
+infoModalEl.addEventListener("click", (e) => {
+  if (e.target === infoModalEl) infoModalEl.classList.remove("open");
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") infoModalEl.classList.remove("open");
+});
