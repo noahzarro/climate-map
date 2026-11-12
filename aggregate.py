@@ -32,7 +32,7 @@ instead.
 import numpy as np
 import xarray as xr
 
-from periods import build_periods, month_day_to_period_index
+from periods import MONTH_DAYS, build_periods, month_day_to_period_index
 
 # variable short-name -> (input file, output file)
 VARIABLES = {
@@ -52,11 +52,72 @@ VARIABLES = {
         "rr_ens_mean_0.1deg_reg_2011-2025_v33.0e.nc",
         "rr_period_climatology_2011-2025.nc",
     ),
+    # Wet days per month, derived from the precipitation input.
+    "rd": (
+        "rr_ens_mean_0.1deg_reg_2011-2025_v33.0e.nc",
+        "rd_period_climatology_2011-2025.nc",
+    ),
 }
 
 
-def build_period_climatology(input_file: str) -> xr.Dataset:
-    ds = xr.open_dataset(input_file)
+WET_DAY_THRESHOLD_MM = 1.0
+
+
+def to_wet_day_indicator(ds: xr.Dataset) -> xr.Dataset:
+    """Convert daily precipitation (mm) into a 1/0 wet-day indicator (NaN
+    preserved), renamed to "rd". Its climatology is the wet-day fraction."""
+    wet = (ds["rr"] >= WET_DAY_THRESHOLD_MM).astype("float32")
+    wet = wet.where(ds["rr"].notnull())
+    return wet.to_dataset(name="rd")
+
+
+def scale_to_days_per_month(ds: xr.Dataset) -> xr.Dataset:
+    """Scale the per-period wet-day fraction to wet days per month, using
+    each period's month length (February = 28.25)."""
+    days = np.array(
+        [28.25 if p["month"] == 2 else MONTH_DAYS[p["month"]] for p in build_periods()],
+        dtype="float32",
+    )
+    factor = xr.DataArray(days, dims="time", coords={"time": ds["time"]})
+    out = ds * factor
+    out["rd"].attrs.update(
+        units="days/month",
+        long_name=f"Days per month with precipitation >= {WET_DAY_THRESHOLD_MM} mm",
+    )
+    return out
+
+
+LAT_STRIP = 50  # rows per strip, keeps memory bounded for the daily data
+
+
+def build_period_climatology(
+    input_file: str, preprocess=None, postprocess=None
+) -> xr.Dataset:
+    full = xr.open_dataset(input_file)
+    n_lat = full.sizes["latitude"]
+    strips = []
+    for start in range(0, n_lat, LAT_STRIP):
+        ds = full.isel(latitude=slice(start, start + LAT_STRIP)).load()
+        if preprocess is not None:
+            ds = preprocess(ds)
+        strips.append(_period_climatology(ds, postprocess))
+    result = xr.concat(strips, dim="latitude")
+    result.attrs.update(full.attrs)
+    result.attrs["description"] = _DESCRIPTION
+    return result
+
+
+_DESCRIPTION = (
+    "Period climatology (2011-2025): each calendar day (MM-DD) is "
+    "first averaged across all years, then those ~366 daily values "
+    "are grouped into one of 48 periods (each of the 12 months split "
+    "into 4 nearly-equal parts; see periods.py) and averaged again. "
+    "The time coordinate is the 0-based period index (0-47), in "
+    "calendar order."
+)
+
+
+def _period_climatology(ds: xr.Dataset, postprocess=None) -> xr.Dataset:
 
     # Step 1: daily climatology, keyed by "MM-DD" (calendar day, no year).
     month_day = ds.time.dt.strftime("%m-%d")
@@ -86,22 +147,22 @@ def build_period_climatology(input_file: str) -> xr.Dataset:
         f"expected {n_periods} periods, got {period_climatology.sizes['time']}"
     )
 
-    period_climatology.attrs.update(ds.attrs)
-    period_climatology.attrs["description"] = (
-        "Period climatology (2011-2025): each calendar day (MM-DD) is "
-        "first averaged across all years, then those ~366 daily values "
-        "are grouped into one of 48 periods (each of the 12 months split "
-        "into 4 nearly-equal parts; see periods.py) and averaged again. "
-        "The time coordinate is the 0-based period index (0-47), in "
-        "calendar order."
-    )
+    if postprocess is not None:
+        period_climatology = postprocess(period_climatology)
     return period_climatology
 
 
 def main() -> None:
     for var, (input_file, output_file) in VARIABLES.items():
         print(f"Processing {var} ({input_file}) ...")
-        period_climatology = build_period_climatology(input_file)
+        if var == "rd":
+            period_climatology = build_period_climatology(
+                input_file,
+                preprocess=to_wet_day_indicator,
+                postprocess=scale_to_days_per_month,
+            )
+        else:
+            period_climatology = build_period_climatology(input_file)
         period_climatology.to_netcdf(output_file)
         print(f"  -> saved {output_file}  {dict(period_climatology.sizes)}")
 

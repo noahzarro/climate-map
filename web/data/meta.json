@@ -517,6 +517,24 @@
         "nanSentinel": -32768,
         "formula": "value = raw / scale (raw == nanSentinel -> no data)"
       }
+    },
+    "rd": {
+      "label": "Wet days per month",
+      "units": " days",
+      "dir": "rd",
+      "legend": "legend.png",
+      "colorScale": {
+        "colormap": "YlGnBu",
+        "min": 0.0,
+        "max": 31.0
+      },
+      "rawEncoding": {
+        "dtype": "int16",
+        "byteorder": "little",
+        "scale": 100,
+        "nanSentinel": -32768,
+        "formula": "value = raw / scale (raw == nanSentinel -> no data)"
+      }
     }
   },
   "defaultVariable": "tg"

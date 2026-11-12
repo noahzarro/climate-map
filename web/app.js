@@ -535,6 +535,7 @@ function configureThresholdRangeForVariable(config) {
 // slider; max (tx) and precipitation (rr) hide values above it.
 function keepsAtLeast(variable) {
   return variable === "tg" || variable === "tn";
+  // rd (wet days) behaves like rr: hides values above the slider.
 }
 
 // Progress fill: from the left edge to the thumb when values below the

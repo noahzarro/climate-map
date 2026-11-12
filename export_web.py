@@ -82,6 +82,14 @@ VARIABLES = {
         "scale_min": 0.0,
         "scale_max": 30.0,
     },
+    "rd": {
+        "file": "rd_period_climatology_2011-2025.nc",
+        "label": "Wet days per month",
+        "units": " days",
+        "colormap": "YlGnBu",
+        "scale_min": 0.0,
+        "scale_max": 31.0,
+    },
 }
 
 
