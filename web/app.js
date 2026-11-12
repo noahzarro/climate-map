@@ -16,10 +16,10 @@
 const DATA_URL = "web/data/meta.json";
 const IMAGE_SOURCE_ID = "climate-image";
 const IMAGE_LAYER_ID = "climate-layer";
-const HIGHLIGHT_SOURCE_ID = "climate-highlight";
-const HIGHLIGHT_LAYER_ID = "climate-highlight-layer";
+const FILTER_SOURCE_ID = "climate-filter";
+const FILTER_LAYER_ID = "climate-filter-layer";
 
-const HIGHLIGHT_DIM_ALPHA = 170; // 0-255, alpha of the dimming overlay
+const FILTER_DIM_ALPHA = 170; // 0-255, alpha of the dimming overlay
 
 let meta = null;
 let currentVariable = null;
@@ -27,9 +27,8 @@ let currentPeriodIndex = 0;
 let currentGrid = null; // Int16Array for the currently loaded variable/period
 const gridCache = new Map(); // "var:periodIndex" -> Int16Array
 
-let highlightEnabled = false;
-let highlightDirection = "atLeast"; // "atLeast" | "atMost"
-let highlightThreshold = 0;
+let filterEnabled = false;
+let filterThreshold = 0;
 let rowRemap = null; // Int32Array: for each Mercator-warped output row, the
 // nearest source row index in the north-first equirectangular grid.
 
@@ -41,11 +40,10 @@ const selectedPeriodLabelEl = document.getElementById("selected-period-label");
 const calendarEl = document.getElementById("calendar");
 const tooltipEl = document.getElementById("tooltip");
 const loadingEl = document.getElementById("loading");
-const highlightEnableEl = document.getElementById("highlight-enable");
-const highlightControlsEl = document.getElementById("highlight-controls");
-const highlightDirectionEl = document.getElementById("highlight-direction");
-const highlightThresholdEl = document.getElementById("highlight-threshold");
-const highlightValueLabelEl = document.getElementById("highlight-value-label");
+const filterEnableEl = document.getElementById("filter-enable");
+const filterControlsEl = document.getElementById("filter-controls");
+const filterThresholdEl = document.getElementById("filter-threshold");
+const filterValueLabelEl = document.getElementById("filter-value-label");
 const sidebarEl = document.getElementById("sidebar");
 const sidebarToggleEl = document.getElementById("sidebar-toggle");
 const sidebarBackdropEl = document.getElementById("sidebar-backdrop");
@@ -159,6 +157,7 @@ window.map = map; // handy for debugging in the browser console
 map.on("load", async () => {
   meta = await fetch(DATA_URL).then((r) => r.json());
   currentVariable = meta.defaultVariable;
+  const initialPeriodIndex = periodIndexForToday();
 
   const { lonMin, lonMax, latMin, latMax } = meta.bounds;
   const coordinates = [
@@ -170,7 +169,7 @@ map.on("load", async () => {
 
   map.addSource(IMAGE_SOURCE_ID, {
     type: "image",
-    url: periodPngUrl(currentVariable, 0),
+    url: periodPngUrl(currentVariable, initialPeriodIndex),
     coordinates,
   });
 
@@ -193,10 +192,10 @@ map.on("load", async () => {
     firstSymbolLayer ? firstSymbolLayer.id : undefined
   );
 
-  // Highlight overlay: a dimming mask drawn on top of the color layer,
+  // Filter overlay: a dimming mask drawn on top of the color layer,
   // built client-side from the raw grid, so it can respond instantly to
   // threshold changes without any server round-trip.
-  map.addSource(HIGHLIGHT_SOURCE_ID, {
+  map.addSource(FILTER_SOURCE_ID, {
     type: "image",
     url: transparentPixelUrl(),
     coordinates,
@@ -204,9 +203,9 @@ map.on("load", async () => {
 
   map.addLayer(
     {
-      id: HIGHLIGHT_LAYER_ID,
+      id: FILTER_LAYER_ID,
       type: "raster",
-      source: HIGHLIGHT_SOURCE_ID,
+      source: FILTER_SOURCE_ID,
       paint: {
         "raster-opacity": 1,
       },
@@ -239,18 +238,28 @@ map.on("load", async () => {
   buildVariableButtons();
   buildCalendar();
   updateLegend();
-  setupHighlightControls();
+  setupFilterControls();
 
   const { rows } = meta.grid;
   rowRemap = buildMercatorRowRemap(latMin, latMax, meta.grid.latStep, rows);
 
-  await setPeriod(0);
+  await setPeriod(initialPeriodIndex);
 
   map.on("mousemove", onMouseMove);
   map.on("mouseout", () => {
     tooltipEl.style.display = "none";
   });
 });
+
+function periodIndexForToday() {
+  const now = new Date();
+  const month = now.getMonth() + 1;
+  const day = now.getDate();
+  const idx = meta.periods.findIndex(
+    (p) => p.month === month && day >= p.dayStart && day <= p.dayEnd
+  );
+  return idx >= 0 ? idx : 0;
+}
 
 function periodPngUrl(variable, index) {
   const period = meta.periods[index];
@@ -281,6 +290,7 @@ function buildVariableButtons() {
 function updateLegend() {
   const config = meta.variables[currentVariable];
   legendImgEl.src = `web/data/${config.dir}/${config.legend}`;
+  filterThresholdEl.style.setProperty("--legend-url", `url("${legendImgEl.src}")`);
   legendMinEl.textContent = `${config.colorScale.min}${config.units}`;
   legendMaxEl.textContent = `${config.colorScale.max}${config.units}`;
 }
@@ -350,7 +360,7 @@ async function setVariable(variable) {
   }
 
   currentGrid = await loadGrid(currentVariable, currentPeriodIndex);
-  updateHighlightOverlay();
+  updateFilterOverlay();
 }
 
 async function setPeriod(index) {
@@ -365,7 +375,7 @@ async function setPeriod(index) {
   }
 
   currentGrid = await loadGrid(currentVariable, index);
-  updateHighlightOverlay();
+  updateFilterOverlay();
 }
 
 async function loadGrid(variable, index) {
@@ -446,7 +456,7 @@ function positionTooltip(pointX, pointY) {
   tooltipEl.style.top = `${top}px`;
 }
 
-// --- Highlight (threshold) overlay -----------------------------------
+// --- Filter (threshold) overlay -----------------------------------
 
 function transparentPixelUrl() {
   const canvas = document.createElement("canvas");
@@ -494,55 +504,67 @@ function buildMercatorRowRemap(latMin, latMax, latStep, rows) {
   return remap;
 }
 
-function setupHighlightControls() {
+function setupFilterControls() {
   const config = meta.variables[currentVariable];
-  highlightThreshold = (config.colorScale.min + config.colorScale.max) / 2;
+  filterThreshold = (config.colorScale.min + config.colorScale.max) / 2;
   configureThresholdRangeForVariable(config);
 
-  highlightEnableEl.addEventListener("change", () => {
-    highlightEnabled = highlightEnableEl.checked;
-    highlightControlsEl.classList.toggle("disabled", !highlightEnabled);
-    updateHighlightOverlay();
+  filterEnableEl.addEventListener("change", () => {
+    filterEnabled = filterEnableEl.checked;
+    filterControlsEl.classList.toggle("disabled", !filterEnabled);
+    updateFilterOverlay();
   });
 
-  highlightDirectionEl.querySelectorAll(".direction-button").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      highlightDirection = btn.dataset.direction;
-      highlightDirectionEl
-        .querySelectorAll(".direction-button")
-        .forEach((b) => b.classList.toggle("active", b === btn));
-      updateHighlightLabel();
-      updateHighlightOverlay();
-    });
-  });
-
-  highlightThresholdEl.addEventListener("input", () => {
-    highlightThreshold = parseFloat(highlightThresholdEl.value);
-    updateHighlightLabel();
-    updateHighlightOverlay();
+  filterThresholdEl.addEventListener("input", () => {
+    filterThreshold = parseFloat(filterThresholdEl.value);
+    updateFilterLabel();
+    updateFilterOverlay();
   });
 }
 
 function configureThresholdRangeForVariable(config) {
   const { min, max } = config.colorScale;
-  highlightThresholdEl.min = String(min);
-  highlightThresholdEl.max = String(max);
-  highlightThreshold = Math.min(Math.max(highlightThreshold, min), max);
-  highlightThresholdEl.value = String(highlightThreshold);
-  updateHighlightLabel();
+  filterThresholdEl.min = String(min);
+  filterThresholdEl.max = String(max);
+  filterThreshold = keepsAtLeast(currentVariable) ? min : max;
+  filterThresholdEl.value = String(filterThreshold);
+  updateFilterLabel();
 }
 
-function updateHighlightLabel() {
+// Hardcoded filter rules: mean (tg) and min (tn) hide values below the
+// slider; max (tx) and precipitation (rr) hide values above it.
+function keepsAtLeast(variable) {
+  return variable === "tg" || variable === "tn";
+}
+
+// Progress fill: from the left edge to the thumb when values below the
+// slider are hidden (tg/tn); from the right edge to the thumb when values
+// above the slider are hidden (tx/rr), so it starts empty at the right.
+function updateFilterSliderFill() {
+  const min = parseFloat(filterThresholdEl.min);
+  const max = parseFloat(filterThresholdEl.max);
+  const pct = ((filterThreshold - min) / (max - min)) * 100;
+  if (keepsAtLeast(currentVariable)) {
+    filterThresholdEl.style.setProperty("--fill-from", "0%");
+    filterThresholdEl.style.setProperty("--fill-to", `${pct}%`);
+  } else {
+    filterThresholdEl.style.setProperty("--fill-from", `${pct}%`);
+    filterThresholdEl.style.setProperty("--fill-to", "100%");
+  }
+}
+
+function updateFilterLabel() {
+  updateFilterSliderFill();
   const config = meta.variables[currentVariable];
-  const dirLabel = highlightDirection === "atLeast" ? "\u2265" : "\u2264";
-  highlightValueLabelEl.textContent = `Threshold: ${dirLabel} ${highlightThreshold.toFixed(1)}${config.units}`;
+  const dirLabel = keepsAtLeast(currentVariable) ? "\u2265" : "\u2264";
+  filterValueLabelEl.textContent = `Showing: ${dirLabel} ${filterThreshold.toFixed(1)}${config.units}`;
 }
 
-function updateHighlightOverlay() {
-  const source = map.getSource(HIGHLIGHT_SOURCE_ID);
+function updateFilterOverlay() {
+  const source = map.getSource(FILTER_SOURCE_ID);
   if (!source) return;
 
-  if (!highlightEnabled || !currentGrid || !rowRemap) {
+  if (!filterEnabled || !currentGrid || !rowRemap) {
     source.updateImage({ url: transparentPixelUrl() });
     return;
   }
@@ -550,7 +572,8 @@ function updateHighlightOverlay() {
   const { rows, cols } = meta.grid;
   const config = meta.variables[currentVariable];
   const { scale, nanSentinel } = config.rawEncoding;
-  const thresholdRaw = Math.round(highlightThreshold * scale);
+  const thresholdRaw = Math.round(filterThreshold * scale);
+  const atLeast = keepsAtLeast(currentVariable);
 
   const canvas = document.createElement("canvas");
   canvas.width = cols;
@@ -573,10 +596,7 @@ function updateHighlightOverlay() {
         continue;
       }
 
-      const matches =
-        highlightDirection === "atLeast"
-          ? raw >= thresholdRaw
-          : raw <= thresholdRaw;
+      const matches = atLeast ? raw >= thresholdRaw : raw <= thresholdRaw;
 
       if (matches) {
         data[outIdx + 3] = 0; // matching area: leave untouched (no dimming)
@@ -584,7 +604,7 @@ function updateHighlightOverlay() {
         data[outIdx] = 0;
         data[outIdx + 1] = 0;
         data[outIdx + 2] = 0;
-        data[outIdx + 3] = HIGHLIGHT_DIM_ALPHA; // non-matching: dim
+        data[outIdx + 3] = FILTER_DIM_ALPHA; // non-matching: dim
       }
     }
   }

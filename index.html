@@ -193,7 +193,7 @@
       font-weight: 700;
     }
 
-    #highlight-enable-row {
+    #filter-enable-row {
       display: flex;
       align-items: center;
       gap: 8px;
@@ -201,41 +201,18 @@
       font-size: 13px;
     }
 
-    #highlight-controls {
+    #filter-controls {
       display: flex;
       flex-direction: column;
       gap: 10px;
     }
 
-    #highlight-controls.disabled {
+    #filter-controls.disabled {
       opacity: 0.4;
       pointer-events: none;
     }
 
-    #highlight-direction {
-      display: flex;
-      gap: 6px;
-    }
-
-    .direction-button {
-      flex: 1;
-      border: 1px solid #ccc;
-      background: #f7f7f7;
-      border-radius: 6px;
-      padding: 6px 4px;
-      font-size: 12px;
-      cursor: pointer;
-      text-align: center;
-    }
-
-    .direction-button.active {
-      background: #4361ee;
-      border-color: #4361ee;
-      color: #fff;
-      font-weight: 600;
-    }
-
-    #highlight-value-row {
+    #filter-value-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -243,8 +220,48 @@
       color: #444;
     }
 
-    #highlight-threshold {
+    #filter-threshold {
       width: 100%;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 6px;
+      border-radius: 3px;
+      outline: none;
+      cursor: pointer;
+      --fill-from: 0%;
+      --fill-to: 0%;
+      background:
+        linear-gradient(
+          to right,
+          transparent 0%,
+          transparent var(--fill-from),
+          rgba(0, 0, 0, 0.667) var(--fill-from),
+          rgba(0, 0, 0, 0.667) var(--fill-to),
+          transparent var(--fill-to),
+          transparent 100%
+        ),
+        var(--legend-url, none) center / 100% 100% no-repeat,
+        #d9d9d9;
+    }
+
+    #filter-threshold::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #4361ee;
+      border: 2px solid #fff;
+      box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+    }
+
+    #filter-threshold::-moz-range-thumb {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #4361ee;
+      border: 2px solid #fff;
+      box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
     }
 
     #tooltip {
@@ -321,19 +338,15 @@
       <span id="legend-max"></span>
     </div>
 
-    <h2>Highlight</h2>
-    <div id="highlight-enable-row">
-      <input type="checkbox" id="highlight-enable" />
-      <label for="highlight-enable">Highlight areas matching a threshold</label>
+    <h2>Filter</h2>
+    <div id="filter-enable-row">
+      <input type="checkbox" id="filter-enable" />
+      <label for="filter-enable">Filter areas by threshold</label>
     </div>
-    <div id="highlight-controls" class="disabled">
-      <div id="highlight-direction">
-        <button type="button" class="direction-button active" data-direction="atLeast">At least (&ge;)</button>
-        <button type="button" class="direction-button" data-direction="atMost">At most (&le;)</button>
-      </div>
-      <input type="range" id="highlight-threshold" step="0.1" />
-      <div id="highlight-value-row">
-        <span id="highlight-value-label">Threshold: -</span>
+    <div id="filter-controls" class="disabled">
+      <input type="range" id="filter-threshold" step="0.1" />
+      <div id="filter-value-row">
+        <span id="filter-value-label">Threshold: -</span>
       </div>
     </div>
 
