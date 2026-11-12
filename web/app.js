@@ -27,21 +27,17 @@ let currentPeriodIndex = 0;
 let currentGrid = null; // Int16Array for the currently loaded variable/period
 const gridCache = new Map(); // "var:periodIndex" -> Int16Array
 
-let filterEnabled = false;
 let filterThreshold = 0;
 let rowRemap = null; // Int32Array: for each Mercator-warped output row, the
 // nearest source row index in the north-first equirectangular grid.
 
 const variableButtonsEl = document.getElementById("variable-buttons");
-const legendImgEl = document.getElementById("legend-gradient");
 const legendMinEl = document.getElementById("legend-min");
 const legendMaxEl = document.getElementById("legend-max");
 const selectedPeriodLabelEl = document.getElementById("selected-period-label");
 const calendarEl = document.getElementById("calendar");
 const tooltipEl = document.getElementById("tooltip");
 const loadingEl = document.getElementById("loading");
-const filterEnableEl = document.getElementById("filter-enable");
-const filterControlsEl = document.getElementById("filter-controls");
 const filterThresholdEl = document.getElementById("filter-threshold");
 const filterValueLabelEl = document.getElementById("filter-value-label");
 const sidebarEl = document.getElementById("sidebar");
@@ -290,8 +286,11 @@ function buildVariableButtons() {
 
 function updateLegend() {
   const config = meta.variables[currentVariable];
-  legendImgEl.src = `web/data/${config.dir}/${config.legend}`;
-  filterThresholdEl.style.setProperty("--legend-url", `url("${legendImgEl.src}")`);
+  const legendUrl = new URL(
+    `web/data/${config.dir}/${config.legend}`,
+    document.baseURI
+  ).href;
+  filterThresholdEl.style.setProperty("--legend-url", `url("${legendUrl}")`);
   legendMinEl.textContent = `${config.colorScale.min}${config.units}`;
   legendMaxEl.textContent = `${config.colorScale.max}${config.units}`;
 }
@@ -556,12 +555,6 @@ function setupFilterControls() {
   filterThreshold = (config.colorScale.min + config.colorScale.max) / 2;
   configureThresholdRangeForVariable(config);
 
-  filterEnableEl.addEventListener("change", () => {
-    filterEnabled = filterEnableEl.checked;
-    filterControlsEl.classList.toggle("disabled", !filterEnabled);
-    updateFilterOverlay();
-  });
-
   filterThresholdEl.addEventListener("input", () => {
     filterThreshold = parseFloat(filterThresholdEl.value);
     updateFilterLabel();
@@ -635,7 +628,7 @@ function renderFilterOverlay() {
   const source = map.getSource(FILTER_SOURCE_ID);
   if (!source) return;
 
-  if (!filterEnabled || !currentGrid || !rowRemap) {
+  if (!currentGrid || !rowRemap) {
     source.updateImage({ url: transparentPixelUrl() });
     return;
   }
