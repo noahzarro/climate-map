@@ -576,40 +576,154 @@ function updateFilterOverlay() {
   const thresholdRaw = Math.round(filterThreshold * scale);
   const atLeast = keepsAtLeast(currentVariable);
 
-  const canvas = document.createElement("canvas");
-  canvas.width = cols;
-  canvas.height = rows;
-  const ctx = canvas.getContext("2d");
-  const imageData = ctx.createImageData(cols, rows);
-  const data = imageData.data;
+  // Per-cell state in the (Mercator-remapped) output grid.
+  const n = rows * cols;
+  let dim = new Float32Array(n); // 1 = filtered out
+  const valid = new Float32Array(n); // 1 = has data
 
   for (let r = 0; r < rows; r++) {
-    const srcRow = rowRemap[r];
-    const rowOffset = srcRow * cols;
+    const rowOffset = rowRemap[r] * cols;
     const outOffset = r * cols;
-
     for (let c = 0; c < cols; c++) {
       const raw = currentGrid[rowOffset + c];
-      const outIdx = (outOffset + c) * 4;
-
-      if (raw === nanSentinel) {
-        data[outIdx + 3] = 0; // no data -> fully transparent (already so in color layer)
-        continue;
-      }
-
+      if (raw === nanSentinel) continue;
+      valid[outOffset + c] = 1;
       const matches = atLeast ? raw >= thresholdRaw : raw <= thresholdRaw;
+      if (!matches) dim[outOffset + c] = 1;
+    }
+  }
 
-      if (matches) {
-        data[outIdx + 3] = 0; // matching area: leave untouched (no dimming)
-      } else {
-        data[outIdx] = 0;
-        data[outIdx + 1] = 0;
-        data[outIdx + 2] = 0;
-        data[outIdx + 3] = FILTER_DIM_ALPHA; // non-matching: dim
-      }
+  // Remove isolated dots and 1px gaps: 3x3 majority vote among valid cells.
+  dim = majorityFilter(dim, valid, cols, rows);
+
+  // Soften edges: blur the mask, normalized by the blurred validity so
+  // coastlines don't fade the dimming out.
+  const dimBlur = blur(multiply(dim, valid), cols, rows, 2);
+  const validBlur = blur(valid, cols, rows, 2);
+
+  // Dim ratio per cell (defined also for ocean cells next to the coast, so
+  // it can be interpolated smoothly across the coastline).
+  const ratio = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    ratio[i] = validBlur[i] > 0 ? Math.min(dimBlur[i] / validBlur[i], 1) : 0;
+  }
+
+  // Render at UPSCALE x resolution, bilinearly interpolating the ratio and
+  // the blurred coverage, then cut the coastline with a smoothstep on the
+  // coverage so the land/ocean border is smooth instead of stair-stepped.
+  const UPSCALE = 3;
+  const W = cols * UPSCALE;
+  const H = rows * UPSCALE;
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  const imageData = ctx.createImageData(W, H);
+  const data = imageData.data;
+
+  for (let y = 0; y < H; y++) {
+    const fy = Math.min(Math.max((y + 0.5) / UPSCALE - 0.5, 0), rows - 1);
+    const y0 = Math.floor(fy);
+    const y1 = Math.min(y0 + 1, rows - 1);
+    const wy = fy - y0;
+    for (let x = 0; x < W; x++) {
+      const fx = Math.min(Math.max((x + 0.5) / UPSCALE - 0.5, 0), cols - 1);
+      const x0 = Math.floor(fx);
+      const x1 = Math.min(x0 + 1, cols - 1);
+      const wx = fx - x0;
+
+      const i00 = y0 * cols + x0;
+      const i10 = y0 * cols + x1;
+      const i01 = y1 * cols + x0;
+      const i11 = y1 * cols + x1;
+      const w00 = (1 - wx) * (1 - wy);
+      const w10 = wx * (1 - wy);
+      const w01 = (1 - wx) * wy;
+      const w11 = wx * wy;
+
+      const cov =
+        validBlur[i00] * w00 + validBlur[i10] * w10 +
+        validBlur[i01] * w01 + validBlur[i11] * w11;
+      if (cov <= 0.3) continue;
+      const t = Math.min((cov - 0.3) / 0.4, 1);
+      const coverage = t * t * (3 - 2 * t);
+
+      const rat =
+        ratio[i00] * w00 + ratio[i10] * w10 +
+        ratio[i01] * w01 + ratio[i11] * w11;
+
+      data[(y * W + x) * 4 + 3] = Math.round(FILTER_DIM_ALPHA * rat * coverage);
     }
   }
 
   ctx.putImageData(imageData, 0, 0);
   source.updateImage({ url: canvas.toDataURL("image/png") });
+}
+
+function multiply(a, b) {
+  const out = new Float32Array(a.length);
+  for (let i = 0; i < a.length; i++) out[i] = a[i] * b[i];
+  return out;
+}
+
+function majorityFilter(dim, valid, cols, rows) {
+  const out = new Float32Array(dim.length);
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const i = r * cols + c;
+      if (valid[i] === 0) continue;
+      let dimCount = 0;
+      let validCount = 0;
+      for (let dr = -1; dr <= 1; dr++) {
+        const rr = r + dr;
+        if (rr < 0 || rr >= rows) continue;
+        for (let dc = -1; dc <= 1; dc++) {
+          const cc = c + dc;
+          if (cc < 0 || cc >= cols) continue;
+          const j = rr * cols + cc;
+          if (valid[j] === 0) continue;
+          validCount++;
+          dimCount += dim[j];
+        }
+      }
+      out[i] =
+        dimCount * 2 > validCount ? 1 : dimCount * 2 < validCount ? 0 : dim[i];
+    }
+  }
+  return out;
+}
+
+// Separable box blur (applied twice for a smoother, near-gaussian result).
+function blur(src, cols, rows, radius) {
+  let a = boxBlur(src, cols, rows, radius);
+  a = boxBlur(a, cols, rows, radius);
+  return a;
+}
+
+function boxBlur(src, cols, rows, radius) {
+  const tmp = new Float32Array(src.length);
+  const out = new Float32Array(src.length);
+  const size = 2 * radius + 1;
+  for (let r = 0; r < rows; r++) {
+    const o = r * cols;
+    for (let c = 0; c < cols; c++) {
+      let sum = 0;
+      for (let k = -radius; k <= radius; k++) {
+        const cc = c + k;
+        if (cc >= 0 && cc < cols) sum += src[o + cc];
+      }
+      tmp[o + c] = sum / size;
+    }
+  }
+  for (let c = 0; c < cols; c++) {
+    for (let r = 0; r < rows; r++) {
+      let sum = 0;
+      for (let k = -radius; k <= radius; k++) {
+        const rr = r + k;
+        if (rr >= 0 && rr < rows) sum += tmp[rr * cols + c];
+      }
+      out[r * cols + c] = sum / size;
+    }
+  }
+  return out;
 }
