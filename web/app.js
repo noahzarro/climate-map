@@ -246,6 +246,7 @@ map.on("load", async () => {
   await setPeriod(initialPeriodIndex);
 
   map.on("mousemove", onMouseMove);
+  map.on("click", onMapClick);
   map.on("mouseout", () => {
     tooltipEl.style.display = "none";
   });
@@ -429,6 +430,52 @@ function onMouseMove(e) {
   positionTooltip(e.point.x, e.point.y);
 }
 
+let clickPopup = null;
+
+function cellIndexAt(lng, lat) {
+  const { lonMin, lonMax, latMin, latMax } = meta.bounds;
+  if (lng < lonMin || lng > lonMax || lat < latMin || lat > latMax) return -1;
+  const { rows, cols, latStep, lonStep } = meta.grid;
+  const col = Math.round((lng - lonMin) / lonStep);
+  const row = Math.round((latMax - lat) / latStep);
+  if (col < 0 || col >= cols || row < 0 || row >= rows) return -1;
+  return row * cols + col;
+}
+
+async function onMapClick(e) {
+  if (!meta) return;
+  const idx = cellIndexAt(e.lngLat.lng, e.lngLat.lat);
+  if (idx < 0) return;
+
+  const periodIndex = currentPeriodIndex;
+  const keys = Object.keys(meta.variables);
+  const grids = await Promise.all(keys.map((k) => loadGrid(k, periodIndex)));
+
+  const container = document.createElement("div");
+  const title = document.createElement("div");
+  title.style.fontWeight = "600";
+  title.style.marginBottom = "4px";
+  title.textContent = formatPeriodLabel(meta.periods[periodIndex]);
+  container.appendChild(title);
+
+  keys.forEach((key, i) => {
+    const config = meta.variables[key];
+    const raw = grids[i][idx];
+    const line = document.createElement("div");
+    line.textContent =
+      raw === config.rawEncoding.nanSentinel
+        ? `${config.label}: no data`
+        : `${config.label}: ${(raw / config.rawEncoding.scale).toFixed(1)}${config.units}`;
+    container.appendChild(line);
+  });
+
+  if (clickPopup) clickPopup.remove();
+  clickPopup = new maplibregl.Popup({ maxWidth: "260px" })
+    .setLngLat(e.lngLat)
+    .setDOMContent(container)
+    .addTo(map);
+}
+
 // Position the tooltip near the cursor, offset by 14px, but clamped so it
 // never extends past the viewport edges (which would otherwise grow the
 // document size and show a scrollbar).
@@ -561,7 +608,30 @@ function updateFilterLabel() {
   filterValueLabelEl.textContent = `Showing: ${dirLabel} ${filterThreshold.toFixed(1)}${config.units}`;
 }
 
+let filterRafPending = false;
+let filterRenderToken = 0;
+let filterObjectUrl = null;
+
+// Coalesce rapid slider events into at most one render per frame.
 function updateFilterOverlay() {
+  if (filterRafPending) return;
+  filterRafPending = true;
+  requestAnimationFrame(() => {
+    filterRafPending = false;
+    renderFilterOverlay();
+  });
+}
+
+function setFilterImage(source, blob, token) {
+  if (token !== filterRenderToken) return; // stale render, drop it
+  const url = URL.createObjectURL(blob);
+  source.updateImage({ url });
+  if (filterObjectUrl) URL.revokeObjectURL(filterObjectUrl);
+  filterObjectUrl = url;
+}
+
+function renderFilterOverlay() {
+  const token = ++filterRenderToken;
   const source = map.getSource(FILTER_SOURCE_ID);
   if (!source) return;
 
@@ -611,7 +681,7 @@ function updateFilterOverlay() {
   // Render at UPSCALE x resolution, bilinearly interpolating the ratio and
   // the blurred coverage, then cut the coastline with a smoothstep on the
   // coverage so the land/ocean border is smooth instead of stair-stepped.
-  const UPSCALE = 3;
+  const UPSCALE = 2;
   const W = cols * UPSCALE;
   const H = rows * UPSCALE;
   const canvas = document.createElement("canvas");
@@ -619,45 +689,54 @@ function updateFilterOverlay() {
   canvas.height = H;
   const ctx = canvas.getContext("2d");
   const imageData = ctx.createImageData(W, H);
-  const data = imageData.data;
+  const pixels = new Uint32Array(imageData.data.buffer);
+  const littleEndian = new Uint8Array(new Uint32Array([1]).buffer)[0] === 1;
+
+  // Horizontal interpolation indices/weights are the same for every row.
+  const xi0 = new Int32Array(W);
+  const xi1 = new Int32Array(W);
+  const xw = new Float32Array(W);
+  for (let x = 0; x < W; x++) {
+    const fx = Math.min(Math.max((x + 0.5) / UPSCALE - 0.5, 0), cols - 1);
+    xi0[x] = Math.floor(fx);
+    xi1[x] = Math.min(xi0[x] + 1, cols - 1);
+    xw[x] = fx - xi0[x];
+  }
 
   for (let y = 0; y < H; y++) {
     const fy = Math.min(Math.max((y + 0.5) / UPSCALE - 0.5, 0), rows - 1);
     const y0 = Math.floor(fy);
     const y1 = Math.min(y0 + 1, rows - 1);
     const wy = fy - y0;
+    const r0 = y0 * cols;
+    const r1 = y1 * cols;
+    const outRow = y * W;
     for (let x = 0; x < W; x++) {
-      const fx = Math.min(Math.max((x + 0.5) / UPSCALE - 0.5, 0), cols - 1);
-      const x0 = Math.floor(fx);
-      const x1 = Math.min(x0 + 1, cols - 1);
-      const wx = fx - x0;
+      const x0 = xi0[x];
+      const x1 = xi1[x];
+      const wx = xw[x];
 
-      const i00 = y0 * cols + x0;
-      const i10 = y0 * cols + x1;
-      const i01 = y1 * cols + x0;
-      const i11 = y1 * cols + x1;
-      const w00 = (1 - wx) * (1 - wy);
-      const w10 = wx * (1 - wy);
-      const w01 = (1 - wx) * wy;
-      const w11 = wx * wy;
-
-      const cov =
-        validBlur[i00] * w00 + validBlur[i10] * w10 +
-        validBlur[i01] * w01 + validBlur[i11] * w11;
+      const a0 = validBlur[r0 + x0] * (1 - wx) + validBlur[r0 + x1] * wx;
+      const a1 = validBlur[r1 + x0] * (1 - wx) + validBlur[r1 + x1] * wx;
+      const cov = a0 * (1 - wy) + a1 * wy;
       if (cov <= 0.3) continue;
       const t = Math.min((cov - 0.3) / 0.4, 1);
       const coverage = t * t * (3 - 2 * t);
 
-      const rat =
-        ratio[i00] * w00 + ratio[i10] * w10 +
-        ratio[i01] * w01 + ratio[i11] * w11;
+      const b0 = ratio[r0 + x0] * (1 - wx) + ratio[r0 + x1] * wx;
+      const b1 = ratio[r1 + x0] * (1 - wx) + ratio[r1 + x1] * wx;
+      const rat = b0 * (1 - wy) + b1 * wy;
 
-      data[(y * W + x) * 4 + 3] = Math.round(FILTER_DIM_ALPHA * rat * coverage);
+      const alpha = Math.round(FILTER_DIM_ALPHA * rat * coverage);
+      // Black pixel with the given alpha (RGB = 0).
+      pixels[outRow + x] = littleEndian ? alpha << 24 : alpha;
     }
   }
 
   ctx.putImageData(imageData, 0, 0);
-  source.updateImage({ url: canvas.toDataURL("image/png") });
+  canvas.toBlob((blob) => {
+    if (blob) setFilterImage(source, blob, token);
+  }, "image/png");
 }
 
 function multiply(a, b) {
